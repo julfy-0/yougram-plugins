@@ -92,15 +92,15 @@
       "id": "com.yougram.example.hello",
       "name": "HelloWorld",
       "author": "Yougram Example",
-      "version": "2.2.0",
-      "api": "2.2",
+      "version": "2.3.1",
+      "api": "2.3",
       "description": "деволт плагин юграма",
       "long_description": "деволт плагин юграма",
       "category": "Оформление",
-      "url": "https://github.com/julfy-0/yougram-plugins/releases/download/submission-mvzefodw-3b9f821b/com.yougram.example.hello-2.2.0.ygplugin",
-      "sha256": "17e778ae4e0f0fdcd032e0a6bfbce87433feacc47e4c61ca5ad9f7eec162dd6d",
-      "size": 14947,
-      "changelog": "",
+      "url": "https://github.com/julfy-0/yougram-plugins/releases/download/submission-mvzucmbp-323ebe5d/com.yougram.example.hello-2.3.1.ygplugin",
+      "sha256": "dbe5f8121c4454c1fcbb2aa1c41144074e5bfd448c1f43ed13c33106c6974931",
+      "size": 41571,
+      "changelog": "новый API 2.3",
       "permissions": [
         "chat.send",
         "hooks"
@@ -108,7 +108,7 @@
       "added": 1793632427,
       "developer": "julfy-0",
       "verified": true,
-      "icon": "icons/com.yougram.example.hello.png"
+      "icon": "icons/com.yougram.example.hello.svg"
     }
   ]
 }
