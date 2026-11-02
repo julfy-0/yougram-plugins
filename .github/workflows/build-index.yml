@@ -1,0 +1,39 @@
+name: Build plugin index
+
+on:
+  release:
+    types: [published, edited, deleted]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-index
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Build site/index.json from releases
+        run: python3 tools/build_index.py
+        env:
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit changes
+        run: |
+          git config user.name "plugin-index-bot"
+          git config user.email "plugin-index-bot@users.noreply.github.com"
+          git add site
+          if git diff --cached --quiet; then
+            echo "Без изменений"
+          else
+            git commit -m "index: update from releases"
+            git push origin HEAD:${{ github.event.repository.default_branch }}
+          fi
