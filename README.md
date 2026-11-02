@@ -47,3 +47,9 @@ sha256 считается по скачанному файлу и сверяет
 1. GitHub -> Settings -> Developer settings -> OAuth Apps -> New. Callback URL: `https://<воркер>.workers.dev/api/auth/callback`. Client ID вписать в `wrangler.toml` (`GH_CLIENT_ID`).
 2. `npx wrangler secret put GH_CLIENT_SECRET`, `SESSION_SECRET` (любая длинная случайная строка), `GITHUB_TOKEN` (fine-grained токен, Contents: write только на этот репозиторий).
 3. `npx wrangler deploy`. Чтобы сайт обновлялся после пересборки каталога, подключи репозиторий в Cloudflare (Workers & Pages -> воркер -> Settings -> Builds). `pages.yml` удали.
+
+## Публикация без ручной проверки
+`AUTO_APPROVE` в `wrangler.toml`: `off` (всё черновиком, ты жмёшь Publish), `updates` (обновления сразу, новые плагины вручную), `all` (всё сразу).
+Админы из `ADMINS` публикуются сразу при любом режиме. При `all` новые плагины от GitHub-аккаунтов младше `MIN_ACCOUNT_DAYS` дней идут на ручную проверку.
+`BANNED` закрывает публикацию логину. Чтобы убрать вредный плагин, удали его релиз на GitHub: после пересборки он исчезнет из каталога.
+Плагин содержит нативный код и запускается у пользователей, поэтому `updates` безопаснее, чем `all`.

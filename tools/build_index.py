@@ -152,21 +152,22 @@ def main():
                 warn(f"{where}: {e}, пропущено")
                 continue
             raw_body = rel.get("body") or ""
-            owner = None
+            owner, marker = None, {}
             mt = SUBMIT_RE.search(raw_body)
             if mt:
                 try:
                     o = json.loads(mt.group(1))
                     if isinstance(o.get("uid"), int) and isinstance(o.get("login"), str):
                         owner = {"uid": o["uid"], "login": o["login"]}
+                        marker = o
                 except ValueError:
                     pass
             body = SUBMIT_RE.sub("", raw_body).strip()
             c = dict(m=m, icon=icon, ext=ext, url=url, sha=sha, size=len(data), published=published,
-                     changelog=body[:2000], owner=owner, where=where)
+                     changelog=body[:2000], owner=owner, marker=marker, where=where)
             cands.setdefault(m["id"], []).append(c)
 
-    owners, first_seen = {}, {}
+    owners, first_seen, profiles = {}, {}, {}
     for pid in list(cands):
         lst = sorted(cands[pid], key=lambda x: x["published"])
         accepted, owner, owner_set = [], None, False
@@ -181,6 +182,15 @@ def main():
             accepted.append(c)
         cands[pid] = accepted
         first_seen[pid] = accepted[0]["published"]
+        # Данные карточки (название, категория, описание), которые автор ввёл в форме на сайте.
+        # Они приходят с первым выпуском; обновления их не меняют.
+        prof = {}
+        for c in accepted:
+            for k in ("name", "category", "desc", "long", "site"):
+                v = c["marker"].get(k)
+                if isinstance(v, str) and v.strip():
+                    prof[k] = v.strip()
+        profiles[pid] = prof
         if owner:
             owners[pid] = {"id": owner["uid"], "login": owner["login"]}
 
@@ -189,16 +199,20 @@ def main():
     for pid, lst in cands.items():
         c = max(lst, key=lambda x: (vkey(x["m"]["version"]), x["published"]))
         m = c["m"]
-        desc = str(m.get("description", ""))[:500]
+        prof = profiles.get(pid, {})
+        desc = (prof.get("desc") or str(m.get("description", "")))[:500]
+        long_desc = prof.get("long") or str(m.get("long_description", desc))
+        if prof.get("site"):
+            long_desc = (long_desc + "\n\nСайт: " + prof["site"]).strip()
         e = {
             "id": pid,
-            "name": m["name"],
+            "name": (prof.get("name") or m["name"])[:120],
             "author": str(m.get("author", "Unknown"))[:120],
             "version": m["version"],
             "api": m["api"],
             "description": desc,
-            "long_description": str(m.get("long_description", desc))[:4000],
-            "category": str(m.get("category", "Другое"))[:40],
+            "long_description": long_desc[:4000],
+            "category": (prof.get("category") or str(m.get("category", "Другое")))[:40],
             "url": c["url"],
             "sha256": c["sha"],
             "size": c["size"],

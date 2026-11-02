@@ -135,7 +135,9 @@ dialog h2{margin:0 0 16px;font:400 24px/32px var(--font);letter-spacing:0}
 .acct .who{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:500 14px/20px var(--font)}
 .gate{display:flex;flex-direction:column;align-items:flex-start;gap:16px;margin-bottom:8px}
 .target{margin:0 0 16px;padding:12px 16px;border-radius:12px;background:var(--secondary-container);color:var(--on-secondary-container);font:500 14px/20px var(--font)}
-.target[hidden],.gate[hidden],#pubForm[hidden]{display:none}
+.target[hidden],.gate[hidden],#pubForm[hidden],.hidden{display:none!important}
+.hint{margin:-8px 0 16px;color:var(--on-surface-variant);font:400 12px/16px var(--font)}
+dialog{max-height:calc(100% - 32px);overflow-y:auto}
 .actions{gap:8px}
 
 /* Snackbar */
@@ -182,16 +184,53 @@ dialog h2{margin:0 0 16px;font:400 24px/32px var(--font);letter-spacing:0}
   </div>
 
   <form id="pubForm" novalidate hidden>
-    <p class="supporting" id="psupport">Файл уйдёт на проверку. Плагин содержит нативный код, поэтому в каталоге он появится только после ручного одобрения.</p>
+    <p class="supporting" id="psupport"></p>
     <p class="target" id="ptarget" hidden></p>
     <div class="filepick">
       <button type="button" class="btn outlined" id="pchoose"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>Выбрать .ygplugin</button>
       <span id="pname">Файл не выбран (до 32 МБ)</span>
       <input type="file" id="pfile" accept=".ygplugin" hidden>
     </div>
+    <div class="newonly">
+      <div class="field">
+        <input type="text" id="pnamef" maxlength="60" placeholder=" " autocomplete="off">
+        <label for="pnamef">Название плагина *</label>
+      </div>
+      <div class="field">
+        <input type="text" id="pcat" maxlength="40" placeholder=" " autocomplete="off" list="catlist">
+        <label for="pcat">Категория *</label>
+        <datalist id="catlist"></datalist>
+      </div>
+    </div>
     <div class="field">
-      <textarea id="pdesc" rows="4" maxlength="1000" placeholder=" " required></textarea>
-      <label for="pdesc" id="pdesclabel">Описание: что делает плагин *</label>
+      <input type="text" id="pver" maxlength="40" placeholder=" " autocomplete="off">
+      <label for="pver">Версия плагина *</label>
+    </div>
+    <p class="hint" id="pverhint">Должна совпадать с version в manifest.json: подставится из файла.</p>
+    <div class="newonly">
+      <div class="field">
+        <textarea id="pdesc" rows="3" maxlength="500" placeholder=" "></textarea>
+        <label for="pdesc">Описание: что делает плагин *</label>
+      </div>
+      <div class="field">
+        <textarea id="plong" rows="3" maxlength="3500" placeholder=" "></textarea>
+        <label for="plong">Подробное описание (необязательно)</label>
+      </div>
+      <div class="field">
+        <input type="text" id="psite" maxlength="200" placeholder=" " autocomplete="off">
+        <label for="psite">Сайт или исходники, https:// (необязательно)</label>
+      </div>
+      <div class="field">
+        <input type="text" id="pcontact" maxlength="100" placeholder=" " autocomplete="off">
+        <label for="pcontact">Контакт: Telegram или почта *</label>
+      </div>
+      <p class="hint">Контакт сохраняется в публичном репозитории каталога, пишите только то, что готовы показать.</p>
+    </div>
+    <div class="updonly">
+      <div class="field">
+        <textarea id="pnotes" rows="4" maxlength="1000" placeholder=" "></textarea>
+        <label for="pnotes">Описание обновления: что изменилось *</label>
+      </div>
     </div>
     <p id="pstatus" role="status"></p>
     <div class="dlg-actions">
@@ -350,18 +389,56 @@ dialog h2{margin:0 0 16px;font:400 24px/32px var(--font);letter-spacing:0}
       .then(function () { renderAcct(); render(); });
   }
 
+  var DEFAULT_CATS = ["Утилиты", "Общение", "Оформление", "Безопасность", "Разработка", "Игры", "Другое"];
+
+  // Читаем manifest.json прямо в браузере, чтобы подставить название, версию и описание.
+  function readManifest(file) {
+    return file.arrayBuffer().then(function (buf) {
+      var v = new DataView(buf), u8 = new Uint8Array(buf), e = -1, i;
+      for (i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 22 - 65535); i--) { if (v.getUint32(i, true) === 0x06054b50) { e = i; break; } }
+      if (e < 0) throw new Error("zip");
+      var total = v.getUint16(e + 10, true), p = v.getUint32(e + 16, true), dec = new TextDecoder();
+      for (i = 0; i < total; i++) {
+        if (p + 46 > buf.byteLength || v.getUint32(p, true) !== 0x02014b50) throw new Error("zip");
+        var nl = v.getUint16(p + 28, true), el = v.getUint16(p + 30, true), cl = v.getUint16(p + 32, true);
+        var name = dec.decode(u8.subarray(p + 46, p + 46 + nl)).replace(/\\/g, "/");
+        if (name === "manifest.json") {
+          var method = v.getUint16(p + 10, true), cs = v.getUint32(p + 20, true), o = v.getUint32(p + 42, true);
+          var st = o + 30 + v.getUint16(o + 26, true) + v.getUint16(o + 28, true);
+          if (cs > 262144 || st + cs > buf.byteLength) throw new Error("big");
+          var raw = u8.slice(st, st + cs);
+          if (method === 0) return JSON.parse(dec.decode(raw));
+          if (method !== 8) throw new Error("method");
+          return new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).text().then(JSON.parse);
+        }
+        p += 46 + nl + el + cl;
+      }
+      throw new Error("no manifest");
+    });
+  }
+
+  function fillCats() {
+    var names = DEFAULT_CATS.slice();
+    plugins.forEach(function (p) { if (p.category && names.indexOf(p.category) === -1) names.push(p.category); });
+    var dl = $("catlist"); dl.textContent = "";
+    names.forEach(function (n) { var o = document.createElement("option"); o.value = n; dl.appendChild(o); });
+  }
+
   function openDialog(p) {
     target = p || null;
     say("");
+    $("pubForm").reset(); $("pname").textContent = "Файл не выбран (до 32 МБ)";
     $("pubTitle").textContent = target ? "Обновить плагин" : "Опубликовать плагин";
     $("pgate").hidden = !!user;
     $("pubForm").hidden = !user;
     $("ptarget").hidden = !target;
+    document.querySelectorAll(".newonly").forEach(function (n) { n.classList.toggle("hidden", !!target); });
+    document.querySelectorAll(".updonly").forEach(function (n) { n.classList.toggle("hidden", !target); });
     if (target) $("ptarget").textContent = target.name + " · сейчас v" + target.version + " · нужна версия выше";
-    $("pdesclabel").textContent = target ? "Что изменилось *" : "Описание: что делает плагин *";
     $("psupport").textContent = target
-      ? "Загрузите новую сборку этого плагина. В manifest.json поднимите version. Обновление выйдет после проверки."
-      : "Файл уйдёт на проверку. Плагин содержит нативный код, поэтому в каталоге он появится только после ручного одобрения. Если плагин с таким id уже ваш, это будет обновление.";
+      ? "Загрузите новую сборку этого плагина. Название, категория и описание останутся прежними."
+      : "Плагин содержит нативный код. Если плагин с таким id уже ваш, это будет обновление.";
+    fillCats();
     pub.showModal();
   }
   $("pubBtn").onclick = function () { openDialog(null); };
@@ -370,27 +447,51 @@ dialog h2{margin:0 0 16px;font:400 24px/32px var(--font);letter-spacing:0}
   $("pfile").addEventListener("change", function () {
     var f = $("pfile").files[0];
     $("pname").textContent = f ? f.name + " · " + size(f.size) : "Файл не выбран (до 32 МБ)";
+    if (!f) return;
+    readManifest(f).then(function (m) {
+      if (m.version) $("pver").value = String(m.version);
+      if (!target) {
+        if (m.name && !$("pnamef").value) $("pnamef").value = String(m.name).slice(0, 60);
+        if (m.description && !$("pdesc").value) $("pdesc").value = String(m.description).slice(0, 500);
+        if (m.category && !$("pcat").value) $("pcat").value = String(m.category).slice(0, 40);
+        if (m.long_description && !$("plong").value) $("plong").value = String(m.long_description).slice(0, 3500);
+      }
+    }).catch(function () { say("Не удалось прочитать manifest.json из файла, проверьте пакет", true); });
   });
+
   $("pubForm").addEventListener("submit", function (e) {
     e.preventDefault();
-    var f = $("pfile").files[0], desc = $("pdesc").value.trim();
+    var f = $("pfile").files[0], v = function (id) { return $(id).value.trim(); };
     if (!f) return say("Выберите файл .ygplugin", true);
     if (!/\.ygplugin$/i.test(f.name)) return say("Нужен файл с расширением .ygplugin", true);
     if (f.size > 32 * 1024 * 1024) return say("Через сайт можно отправить файл до 32 МБ", true);
-    if (desc.length < 10) return say(target ? "Опишите, что изменилось (минимум 10 символов)" : "Добавьте описание: хотя бы 10 символов о том, что делает плагин", true);
+    if (!v("pver")) return say("Укажите версию плагина", true);
+    var meta = { version: v("pver") };
+    if (target) {
+      if (v("pnotes").length < 10) return say("Опишите, что изменилось (минимум 10 символов)", true);
+      meta.pluginId = target.id; meta.notes = v("pnotes");
+    } else {
+      if (v("pnamef").length < 2) return say("Укажите название плагина", true);
+      if (!v("pcat")) return say("Выберите или введите категорию", true);
+      if (v("pdesc").length < 10) return say("Добавьте описание: хотя бы 10 символов о том, что делает плагин", true);
+      if (!v("pcontact")) return say("Укажите контакт для связи", true);
+      if (v("psite") && !/^https:\/\//i.test(v("psite"))) return say("Ссылка должна начинаться с https://", true);
+      meta.name = v("pnamef"); meta.category = v("pcat"); meta.description = v("pdesc");
+      meta.long = v("plong"); meta.site = v("psite"); meta.contact = v("pcontact");
+    }
+    var metaBytes = new TextEncoder().encode(JSON.stringify(meta));
     var btn = $("psend"); btn.disabled = true; say("Отправка…");
-    var headers = {
-      "X-File-Name": encodeURIComponent(f.name),
-      "X-Description": encodeURIComponent(desc),
-      "Content-Type": "application/octet-stream"
-    };
-    if (target) headers["X-Plugin-Id"] = encodeURIComponent(target.id);
-    fetch("/api/publish", { method: "POST", headers: headers, body: f })
+    fetch("/api/publish", {
+      method: "POST",
+      headers: { "X-Meta-Len": String(metaBytes.length), "Content-Type": "application/octet-stream" },
+      body: new Blob([metaBytes, f])
+    })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, status: r.status, d: d }; }); })
       .then(function (res) {
         if (res.ok) {
-          pub.close(); $("pubForm").reset(); $("pname").textContent = "Файл не выбран (до 32 МБ)"; say("");
-          snack((res.d.kind === "update" ? "Обновление " : "Плагин ") + (res.d.name || "") + " " + (res.d.version || "") + " отправлено на проверку");
+          pub.close();
+          var d = res.d, what = (d.kind === "update" ? "Обновление " : "Плагин ") + (d.name || "") + " " + (d.version || "");
+          snack(d.published ? what + " опубликовано, в каталоге появится через 1–2 минуты" : what + " отправлено на проверку" + (d.reason ? ". " + d.reason : ""));
         } else if (res.status === 401) { user = null; renderAcct(); render(); openDialog(target); }
         else say(res.d.error || "Не удалось отправить", true);
       })

@@ -1,4 +1,4 @@
-name = "yougram-submit"
+name = "yougram-plugins"
 main = "tools/worker.js"
 compatibility_date = "2024-11-01"
 
@@ -12,8 +12,17 @@ run_worker_first = ["/api/*"]
 REPO = "julfy-0/yougram-plugins"
 # GitHub-логины через запятую: могут обновлять любые плагины через сайт
 ADMINS = "julfy-0"
+# Публикация без ручной проверки: off = всё через черновик, updates = обновления сразу, all = всё сразу
+AUTO_APPROVE = "all"
+# Для новых плагинов при AUTO_APPROVE: аккаунту GitHub не меньше стольких дней (иначе ручная проверка)
+MIN_ACCOUNT_DAYS = "7"
+# Логины через запятую, которым публикация закрыта
+BANNED = ""
 # Client ID из GitHub -> Settings -> Developer settings -> OAuth Apps (не секрет)
+<<<<<<< Updated upstream
 name = "yougram-plugins"
+=======
+>>>>>>> Stashed changes
 GH_CLIENT_ID = "Ov23libz09WBm1v8rKTg"
 
 # Секреты задаются командой `npx wrangler secret put <ИМЯ>` или в панели Cloudflare:

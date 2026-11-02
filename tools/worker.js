@@ -303,45 +303,70 @@ function cmpVersion(a, b) {
 
 // ---------- приём плагина ----------
 
-const dec = (v) => {
-  try {
-    return decodeURIComponent(v || "");
-  } catch {
-    return "";
-  }
-};
-
-// Без управляющих символов (кроме переводов строки); «@» ломаем, чтобы заявка не пинговала людей на GitHub.
+// Без управляющих символов (кроме переводов строки); «@» ломаем, чтобы текст не пинговал людей на GitHub.
 const cleanText = (v, max) =>
-  String(v || "")
+  String(v == null ? "" : v)
     .replace(/\r\n?/g, "\n")
     .replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, " ")
     .replace(/@/g, "@\u200b")
     .trim()
     .slice(0, max);
+const cleanLine = (v, max) => cleanText(v, max).replace(/\n+/g, " ");
+
+const list = (v) => (v || "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
+
+// Тело запроса: [JSON с полями формы][файл .ygplugin]. Длина JSON в заголовке X-Meta-Len.
+// Так длинные тексты не упираются в лимит размера заголовков.
+function splitBody(buf, metaLen) {
+  if (!Number.isInteger(metaLen) || metaLen < 2 || metaLen > 64 * 1024 || metaLen >= buf.byteLength) {
+    throw new Error("Некорректный запрос");
+  }
+  let meta;
+  try {
+    meta = JSON.parse(new TextDecoder().decode(buf.slice(0, metaLen)));
+  } catch {
+    throw new Error("Некорректный запрос");
+  }
+  if (!meta || typeof meta !== "object") throw new Error("Некорректный запрос");
+  return { meta, file: buf.slice(metaLen) };
+}
+
+// Режим публикации без ручной проверки: AUTO_APPROVE = off | updates | all (по умолчанию off).
+async function accountAgeDays(env, login, ghHeaders) {
+  const r = await fetch(`https://api.github.com/users/${encodeURIComponent(login)}`, { headers: ghHeaders }).catch(() => null);
+  if (!r || !r.ok) return 0;
+  const u = await r.json().catch(() => null);
+  const t = u && Date.parse(u.created_at);
+  return t ? (Date.now() - t) / 86400000 : 0;
+}
 
 async function publish(request, url, env) {
   const user = await readSession(request, env);
   if (!user) return json({ error: "Войдите через GitHub, чтобы отправить плагин", login: true }, 401);
+  if (list(env.BANNED).includes(user.login.toLowerCase())) return json({ error: "Публикация для этого аккаунта закрыта" }, 403);
 
   // Защита от CSRF: запрос должен прийти с нашего же сайта.
   const origin = request.headers.get("origin");
   if (origin && origin !== url.origin) return json({ error: "Запрос с чужого сайта" }, 403);
   if (!env.GITHUB_TOKEN || !env.REPO) return json({ error: "Сервер не настроен" }, 500);
 
-  const fileName = dec(request.headers.get("x-file-name"));
-  const description = cleanText(dec(request.headers.get("x-description")), 1000);
-  const expectedId = dec(request.headers.get("x-plugin-id"));
   const size = Number(request.headers.get("content-length"));
-
-  if (!/\.ygplugin$/i.test(fileName)) return json({ error: "Нужен файл с расширением .ygplugin" }, 400);
-  if (description.length < 10) return json({ error: "Опишите плагин или что изменилось (минимум 10 символов)" }, 400);
+  const metaLen = Number(request.headers.get("x-meta-len"));
   if (!Number.isFinite(size) || size < 100) return json({ error: "Файл пустой или повреждён" }, 400);
-  if (size > MAX_SIZE) return json({ error: "Через сайт можно отправить файл до 32 МБ" }, 413);
+  if (size > MAX_SIZE + 64 * 1024) return json({ error: "Через сайт можно отправить файл до 32 МБ" }, 413);
   if (!request.body) return json({ error: "Нет файла" }, 400);
 
-  const buf = await request.arrayBuffer();
-  if (buf.byteLength !== size) return json({ error: "Файл получен не полностью, попробуйте ещё раз" }, 400);
+  const whole = await request.arrayBuffer();
+  if (whole.byteLength !== size) return json({ error: "Файл получен не полностью, попробуйте ещё раз" }, 400);
+  let parts;
+  try {
+    parts = splitBody(whole, metaLen);
+  } catch (e) {
+    return json({ error: e.message }, 400);
+  }
+  const { meta: f, file: buf } = parts;
+  if (buf.byteLength < 100) return json({ error: "Файл пустой или повреждён" }, 400);
+  if (buf.byteLength > MAX_SIZE) return json({ error: "Через сайт можно отправить файл до 32 МБ" }, 413);
 
   let m;
   try {
@@ -349,14 +374,22 @@ async function publish(request, url, env) {
   } catch (e) {
     return json({ error: e.message }, 400);
   }
+  const expectedId = cleanLine(f.pluginId, 120);
   if (expectedId && expectedId !== m.id) {
     return json({ error: `В файле плагин «${m.id}», а вы обновляете «${expectedId}»` }, 400);
+  }
+  const version = cleanLine(f.version, 40);
+  if (version !== String(m.version)) {
+    return json({ error: `В форме версия «${version}», а в manifest.json «${m.version}». Поправьте manifest.json и пересоберите пакет` }, 400);
   }
 
   const { plugins, owners } = await catalog(env, request);
   if (!plugins) return json({ error: "Каталог сейчас недоступен, попробуйте позже" }, 503);
   const existing = plugins.find((p) => p.id === m.id);
   const kind = existing ? "update" : "new";
+  const notes = cleanText(f.notes, 1000);
+
+  const marker = { uid: user.uid, login: user.login, kind, id: m.id };
   if (existing) {
     if (!canUpdate(env, user, owners, m.id)) {
       return json({ error: `Плагин «${m.id}» уже есть в каталоге и принадлежит другому автору` }, 403);
@@ -364,6 +397,27 @@ async function publish(request, url, env) {
     if (cmpVersion(m.version, existing.version) <= 0) {
       return json({ error: `Версия ${m.version} не новее текущей (${existing.version}). Поднимите version в manifest.json` }, 400);
     }
+    if (notes.length < 10) return json({ error: "Опишите, что изменилось (минимум 10 символов)" }, 400);
+  } else {
+    const name = cleanLine(f.name, 60);
+    const category = cleanLine(f.category, 40);
+    const desc = cleanText(f.description, 500);
+    const contact = cleanLine(f.contact, 100);
+    let site = cleanLine(f.site, 200);
+    if (name.length < 2) return json({ error: "Укажите название плагина" }, 400);
+    if (!category) return json({ error: "Выберите категорию" }, 400);
+    if (desc.length < 10) return json({ error: "Добавьте описание (минимум 10 символов)" }, 400);
+    if (!contact) return json({ error: "Укажите контакт для связи" }, 400);
+    if (site) {
+      try {
+        const u = new URL(site);
+        if (u.protocol !== "https:") throw 0;
+        site = u.href;
+      } catch {
+        return json({ error: "Ссылка на сайт или исходники должна начинаться с https://" }, 400);
+      }
+    }
+    Object.assign(marker, { name, category, desc, contact, long: cleanText(f.long, 3500), site });
   }
 
   const ghHeaders = {
@@ -372,9 +426,23 @@ async function publish(request, url, env) {
     "User-Agent": UA,
     "X-GitHub-Api-Version": "2022-11-28",
   };
-  const meta = JSON.stringify({ uid: user.uid, login: user.login, kind, id: m.id });
+
+  // Публиковать сразу или оставить черновиком до ручного одобрения.
+  const mode = String(env.AUTO_APPROVE || "off").toLowerCase();
+  let auto = isAdmin(env, user) || mode === "all" || (mode === "updates" && kind === "update");
+  let reason = "";
+  if (auto && kind === "new" && !isAdmin(env, user)) {
+    const minDays = Number(env.MIN_ACCOUNT_DAYS || 0);
+    if (minDays > 0 && (await accountAgeDays(env, user.login, ghHeaders)) < minDays) {
+      auto = false;
+      reason = `Ваш GitHub-аккаунт младше ${minDays} дн., поэтому новый плагин проверят вручную`;
+    }
+  }
+
+  // «>» и «<» экранируем, чтобы текст формы не мог закрыть HTML-комментарий с меткой.
+  const metaJson = JSON.stringify(marker).replace(/>/g, "\\u003e").replace(/</g, "\\u003c");
   const tag = `submission-${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
-  const title = `${kind === "update" ? "Обновление" : "Новый плагин"}: ${m.name.trim().slice(0, 60)} ${m.version} (@${user.login})`;
+  const title = `${kind === "update" ? "Обновление" : "Новый плагин"}: ${(marker.name || m.name).trim().slice(0, 60)} ${m.version} (@${user.login})`;
 
   const created = await fetch(`https://api.github.com/repos/${env.REPO}/releases`, {
     method: "POST",
@@ -382,25 +450,39 @@ async function publish(request, url, env) {
     body: JSON.stringify({
       tag_name: tag,
       name: title,
-      // Метку читает build_index.py: по ней определяется владелец. Остальной текст попадает в «Что нового».
-      body: `<!-- yg-submit:${meta} -->\n${description}`,
+      // Метку читает build_index.py: владелец и данные карточки. Остальной текст попадает в «Что нового».
+      body: `<!-- yg-submit:${metaJson} -->\n${notes}`,
       draft: true,
       prerelease: false,
+      make_latest: "false",
     }),
   });
   if (!created.ok) return json({ error: "Не удалось создать заявку" }, 502);
   const release = await created.json();
 
+  const rel = `https://api.github.com/repos/${env.REPO}/releases/${release.id}`;
   const assetName = `${m.id}-${m.version}.ygplugin`;
   const upload = await fetch(
     `https://uploads.github.com/repos/${env.REPO}/releases/${release.id}/assets?name=${encodeURIComponent(assetName)}`,
     { method: "POST", headers: { ...ghHeaders, "Content-Type": "application/octet-stream" }, body: buf },
   );
   if (!upload.ok) {
-    await fetch(`https://api.github.com/repos/${env.REPO}/releases/${release.id}`, { method: "DELETE", headers: ghHeaders });
+    await fetch(rel, { method: "DELETE", headers: ghHeaders });
     return json({ error: "Не удалось загрузить файл" }, 502);
   }
-  return json({ ok: true, kind, id: m.id, name: m.name, version: m.version });
+
+  // Публикуем только после загрузки файла: событие release.published запускает сборку каталога.
+  let published = false;
+  if (auto) {
+    const pub = await fetch(rel, {
+      method: "PATCH",
+      headers: { ...ghHeaders, "Content-Type": "application/json" },
+      body: JSON.stringify({ draft: false, make_latest: "false" }),
+    });
+    published = pub.ok;
+    if (!pub.ok) reason = "Файл принят, но сразу опубликовать не вышло: он ждёт ручной проверки";
+  }
+  return json({ ok: true, kind, id: m.id, name: marker.name || m.name, version: m.version, published, reason });
 }
 
 // ---------- роутер ----------
