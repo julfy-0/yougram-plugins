@@ -3,43 +3,200 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#FEF7FF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141218" media="(prefers-color-scheme: dark)">
 <title>YouGram Plugins</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f6f7f9;--card:#fff;--text:#14171a;--muted:#5f6b76;--accent:#2563eb;--chip:#e8ecf1;--border:#e2e6eb}
-@media (prefers-color-scheme:dark){:root{--bg:#0e1115;--card:#171b21;--text:#e8ebef;--muted:#9aa5b1;--accent:#6ea0ff;--chip:#232932;--border:#262d36}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-main{max-width:860px;margin:0 auto;padding:24px 16px 64px}
-h1{margin:8px 0 4px;font-size:28px}
-.sub{color:var(--muted);margin:0 0 20px}
-input[type=search]{width:100%;padding:12px 16px;border-radius:999px;border:1px solid var(--border);background:var(--card);color:var(--text);font:inherit}
-.cats{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 18px}
-.cat{border:0;border-radius:999px;padding:6px 14px;background:var(--chip);color:var(--text);font:inherit;font-size:14px;cursor:pointer}
-.cat[aria-pressed=true]{background:var(--accent);color:#fff}
-.card{display:flex;gap:14px;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:16px;margin-bottom:12px}
-.ico{flex:none;width:64px;height:64px;border-radius:18px;background:var(--chip);display:grid;place-items:center;font-size:26px;font-weight:600;overflow:hidden}
+:root{
+  --primary:#6750A4;--on-primary:#FFFFFF;--primary-container:#EADDFF;--on-primary-container:#21005D;
+  --secondary-container:#E8DEF8;--on-secondary-container:#1D192B;
+  --surface:#FEF7FF;--on-surface:#1D1B20;--on-surface-variant:#49454F;
+  --outline:#79747E;--outline-variant:#CAC4D0;
+  --sc-low:#F7F2FA;--sc:#F3EDF7;--sc-high:#ECE6F0;--sc-highest:#E6E0E9;
+  --error:#B3261E;--inverse-surface:#322F35;--inverse-on-surface:#F5EFF7;
+  --scrim:rgba(0,0,0,.32);
+  --font:Roboto,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  --primary:#D0BCFF;--on-primary:#381E72;--primary-container:#4F378B;--on-primary-container:#EADDFF;
+  --secondary-container:#4A4458;--on-secondary-container:#E8DEF7;
+  --surface:#141218;--on-surface:#E6E0E9;--on-surface-variant:#CAC4D0;
+  --outline:#938F99;--outline-variant:#49454F;
+  --sc-low:#1D1B20;--sc:#211F26;--sc-high:#2B2930;--sc-highest:#36343B;
+  --error:#F2B8B5;--inverse-surface:#E6E0E9;--inverse-on-surface:#322F35;
+  --scrim:rgba(0,0,0,.5);
+}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-padding-top:72px}
+body{margin:0;background:var(--surface);color:var(--on-surface);font:400 14px/20px var(--font);letter-spacing:.25px}
+svg{width:24px;height:24px;fill:currentColor;flex:none}
+button{font-family:inherit}
+:focus-visible{outline:3px solid var(--primary);outline-offset:2px}
+
+/* Top app bar */
+.bar{position:sticky;top:0;z-index:5;background:var(--surface);transition:background-color .2s}
+.bar.scrolled{background:var(--sc)}
+.bar-in{max-width:840px;margin:0 auto;padding:12px 16px 8px}
+h1{margin:12px 0 0;font:400 32px/40px var(--font);letter-spacing:0}
+.sub{margin:0;color:var(--on-surface-variant);font:400 14px/20px var(--font)}
+.progress{height:4px;background:var(--secondary-container);overflow:hidden;position:relative;opacity:0;transition:opacity .2s}
+.progress.on{opacity:1}
+.progress::before{content:"";position:absolute;inset:0;background:var(--primary);border-radius:2px;transform-origin:left;animation:ind 1.4s ease-in-out infinite}
+@keyframes ind{0%{transform:translateX(-100%) scaleX(.3)}50%{transform:translateX(20%) scaleX(.6)}100%{transform:translateX(100%) scaleX(.3)}}
+
+main{max-width:840px;margin:0 auto;padding:8px 16px 112px}
+
+/* Search bar */
+.search{display:flex;align-items:center;gap:4px;height:56px;padding:0 4px 0 16px;border-radius:28px;background:var(--sc-high);color:var(--on-surface-variant)}
+.search:focus-within{background:var(--sc-highest)}
+.search input{flex:1;min-width:0;height:100%;border:0;outline:0;background:transparent;color:var(--on-surface);font:400 16px/24px var(--font);letter-spacing:.5px;padding:0 12px}
+.search input::placeholder{color:var(--on-surface-variant)}
+.icon-btn{display:grid;place-items:center;width:48px;height:48px;border:0;border-radius:50%;background:transparent;color:inherit;cursor:pointer}
+.icon-btn:hover{background:color-mix(in srgb,var(--on-surface-variant) 8%,transparent)}
+.icon-btn[hidden]{display:none}
+
+/* Filter chips */
+.chips{display:flex;gap:8px;overflow-x:auto;padding:12px 0 8px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.fchip{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 16px;border:1px solid var(--outline);border-radius:8px;background:transparent;color:var(--on-surface-variant);font:500 14px/20px var(--font);letter-spacing:.1px;cursor:pointer;white-space:nowrap}
+.fchip:hover{background:color-mix(in srgb,var(--on-surface-variant) 8%,transparent)}
+.fchip svg{width:18px;height:18px;display:none}
+.fchip[aria-pressed=true]{background:var(--secondary-container);color:var(--on-secondary-container);border-color:transparent;padding-left:8px}
+.fchip[aria-pressed=true] svg{display:block}
+
+/* Grouped list (connected cards, как в приложении) */
+.group{display:flex;flex-direction:column;gap:2px;margin-top:8px}
+.card{background:var(--sc-high);border-radius:4px;padding:16px}
+.card:first-child{border-radius:28px 28px 4px 4px}
+.card:last-child{border-radius:4px 4px 28px 28px}
+.card:only-child{border-radius:28px}
+.row{display:flex;gap:16px;align-items:flex-start}
+.ico{flex:none;width:56px;height:56px;border-radius:16px;background:var(--primary-container);color:var(--on-primary-container);display:grid;place-items:center;font:500 22px/28px var(--font);letter-spacing:0;overflow:hidden}
 .ico img{width:100%;height:100%;object-fit:cover}
 .body{min-width:0;flex:1}
-.name{font-size:18px;font-weight:600;margin:0}
-.id{font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--muted);word-break:break-all}
-.desc{margin:6px 0}
-.meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-.chip{background:var(--chip);border-radius:999px;padding:2px 10px;font-size:12px;color:var(--muted)}
-.btn{display:inline-block;margin-top:10px;padding:8px 18px;border-radius:999px;background:var(--accent);color:#fff;text-decoration:none;font-size:14px}
-.empty{color:var(--muted);text-align:center;padding:40px 0}
+.name{margin:0;font:500 16px/24px var(--font);letter-spacing:.15px}
+.sup{color:var(--on-surface-variant);font:400 14px/20px var(--font)}
+.pid{color:var(--on-surface-variant);font:400 12px/16px ui-monospace,Menlo,Consolas,monospace;word-break:break-all;margin-top:2px}
+.desc{margin:8px 0 0;font:400 14px/20px var(--font);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.tag{height:28px;padding:0 10px;border:1px solid var(--outline-variant);border-radius:8px;color:var(--on-surface-variant);font:500 12px/26px var(--font);letter-spacing:.5px}
+.actions{display:flex;justify-content:flex-end;margin-top:12px}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 24px;border:0;border-radius:20px;font:500 14px/20px var(--font);letter-spacing:.1px;text-decoration:none;cursor:pointer;white-space:nowrap}
+.btn svg{width:18px;height:18px}
+.btn.tonal{background:var(--secondary-container);color:var(--on-secondary-container)}
+.btn.tonal:hover{background:color-mix(in srgb,var(--on-secondary-container) 8%,var(--secondary-container))}
+.btn.outlined{background:transparent;color:var(--primary);border:1px solid var(--outline);padding:0 24px 0 16px}
+.btn.outlined:hover{background:color-mix(in srgb,var(--primary) 8%,transparent)}
+.btn.text{background:transparent;color:var(--primary);padding:0 12px}
+.btn.text:hover{background:color-mix(in srgb,var(--primary) 8%,transparent)}
+.btn:disabled{opacity:.38;cursor:default}
+
+/* Extended FAB */
+.fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:6;display:inline-flex;align-items:center;gap:12px;height:56px;padding:0 20px 0 16px;border:0;border-radius:16px;background:var(--primary-container);color:var(--on-primary-container);font:500 14px/20px var(--font);letter-spacing:.1px;cursor:pointer;box-shadow:0 1px 3px 1px rgba(0,0,0,.15),0 1px 2px rgba(0,0,0,.3);transition:box-shadow .2s,background-color .2s}
+.fab:hover{background:color-mix(in srgb,var(--on-primary-container) 8%,var(--primary-container));box-shadow:0 2px 6px 2px rgba(0,0,0,.15),0 1px 2px rgba(0,0,0,.3)}
+
+/* Empty state */
+.empty{display:flex;flex-direction:column;align-items:center;gap:20px;padding:72px 24px 24px;color:var(--on-surface-variant);text-align:center}
+.cookie{position:relative;width:120px;height:120px;color:var(--on-primary-container)}
+.cookie svg.shape{position:absolute;inset:0;width:100%;height:100%;fill:var(--primary-container)}
+.cookie svg.glyph{position:absolute;left:34px;top:34px;width:52px;height:52px}
+.empty p{margin:0;font:500 16px/24px var(--font);letter-spacing:.15px}
+
+/* Dialog */
+dialog{border:0;border-radius:28px;background:var(--sc-high);color:var(--on-surface);padding:24px;width:min(560px,calc(100% - 32px));max-width:none}
+dialog::backdrop{background:var(--scrim)}
+dialog[open]{animation:dlg .2s cubic-bezier(.2,0,0,1)}
+@keyframes dlg{from{opacity:0;transform:translateY(12px) scale(.96)}}
+.dlg-icon{color:var(--primary);margin-bottom:16px}
+dialog h2{margin:0 0 16px;font:400 24px/32px var(--font);letter-spacing:0}
+.supporting{margin:0 0 20px;color:var(--on-surface-variant);font:400 14px/20px var(--font)}
+.field{position:relative;margin-bottom:16px}
+.field input,.field textarea{width:100%;padding:16px;border:1px solid var(--outline);border-radius:4px;background:transparent;color:var(--on-surface);font:400 16px/24px var(--font);letter-spacing:.5px;outline:0;resize:vertical}
+.field label{position:absolute;left:12px;top:16px;padding:0 4px;background:var(--sc-high);color:var(--on-surface-variant);font:400 16px/24px var(--font);pointer-events:none;transform-origin:left top;transition:transform .15s,color .15s}
+.field input:focus,.field textarea:focus{border-color:var(--primary);box-shadow:inset 0 0 0 1px var(--primary)}
+.field input:focus~label,.field textarea:focus~label,.field input:not(:placeholder-shown)~label,.field textarea:not(:placeholder-shown)~label{transform:translateY(-26px) scale(.75);}
+.field input:focus~label,.field textarea:focus~label{color:var(--primary)}
+.filepick{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.filepick span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--on-surface-variant)}
+#pstatus{min-height:20px;margin:0 0 4px;font:400 14px/20px var(--font)}
+#pstatus.err{color:var(--error)}
+.dlg-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+
+/* Snackbar */
+.snack{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom,0px));z-index:9;transform:translate(-50%,16px);max-width:calc(100% - 32px);padding:14px 16px;border-radius:4px;background:var(--inverse-surface);color:var(--inverse-on-surface);font:400 14px/20px var(--font);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+.snack.on{opacity:1;transform:translate(-50%,0)}
+
+@media (max-width:480px){.fab span{display:none}.fab{padding:0 16px;border-radius:16px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
+<header class="bar" id="bar">
+  <div class="bar-in">
+    <h1>YouGram Plugins</h1>
+    <p class="sub" id="sub">Загрузка…</p>
+  </div>
+  <div class="progress on" id="progress" role="progressbar" aria-label="Загрузка"></div>
+</header>
+
 <main>
-  <h1>YouGram Plugins</h1>
-  <p class="sub" id="sub">Загрузка…</p>
-  <input type="search" id="q" placeholder="Поиск плагинов" autocomplete="off">
-  <div class="cats" id="cats"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+    <input type="search" id="q" placeholder="Поиск плагинов" autocomplete="off" aria-label="Поиск плагинов">
+    <button type="button" class="icon-btn" id="qclear" hidden aria-label="Очистить"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+  </div>
+  <div class="chips" id="cats"></div>
   <div id="list"></div>
 </main>
+
+<button type="button" class="fab" id="pubBtn">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+  <span>Опубликовать плагин</span>
+</button>
+
+<dialog id="pub" aria-labelledby="pubTitle">
+  <form id="pubForm" novalidate>
+    <svg class="dlg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z"/></svg>
+    <h2 id="pubTitle">Опубликовать плагин</h2>
+    <p class="supporting">Файл уйдёт на проверку. Плагин содержит нативный код, поэтому в каталоге он появится только после ручного одобрения.</p>
+    <div class="filepick">
+      <button type="button" class="btn outlined" id="pchoose"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>Выбрать .ygplugin</button>
+      <span id="pname">Файл не выбран (до 64 МБ)</span>
+      <input type="file" id="pfile" accept=".ygplugin" hidden>
+    </div>
+    <div class="field">
+      <input type="text" id="pcontact" maxlength="100" placeholder=" " autocomplete="off">
+      <label for="pcontact">Контакт: Telegram или почта</label>
+    </div>
+    <div class="field">
+      <textarea id="pnotes" rows="3" maxlength="600" placeholder=" "></textarea>
+      <label for="pnotes">Что делает плагин (необязательно)</label>
+    </div>
+    <p id="pstatus" role="status"></p>
+    <div class="dlg-actions">
+      <button type="button" class="btn text" id="pcancel">Закрыть</button>
+      <button type="submit" class="btn text" id="psend">Отправить</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="snack" id="snack" role="status"></div>
+
 <script>
 (function () {
-  var plugins = [], cat = "", q = "";
+  var NS = "http://www.w3.org/2000/svg";
+  var ICON = {
+    check: "M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z",
+    download: "M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z",
+    ext: "M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z"
+  };
+  var plugins = [], cat = "", q = "", loaded = false, failed = false;
   var $ = function (id) { return document.getElementById(id); };
 
   function el(tag, cls, text) {
@@ -48,59 +205,137 @@ input[type=search]{width:100%;padding:12px 16px;border-radius:999px;border:1px s
     if (text != null) e.textContent = text;      // только textContent: данные из манифестов считаются недоверенными
     return e;
   }
+  function svg(path, cls) {
+    var s = document.createElementNS(NS, "svg"), p = document.createElementNS(NS, "path");
+    s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("aria-hidden", "true");
+    if (cls) s.setAttribute("class", cls);
+    p.setAttribute("d", path); s.appendChild(p);
+    return s;
+  }
   function safeUrl(u) {
     try { var x = new URL(u, location.href); return x.protocol === "https:" ? x.href : null; } catch (e) { return null; }
   }
   function size(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + " МБ" : Math.max(1, Math.round(n / 1024)) + " КБ"; }
 
+  // «Печенька» на 12 лепестков (как MaterialShapes.Cookie12Sided в приложении).
+  function cookie() {
+    var box = el("div", "cookie"), s = document.createElementNS(NS, "svg"), p = document.createElementNS(NS, "path"), d = "";
+    s.setAttribute("viewBox", "0 0 100 100"); s.setAttribute("class", "shape"); s.setAttribute("aria-hidden", "true");
+    for (var i = 0; i <= 240; i++) {
+      var t = i / 240 * 2 * Math.PI, r = 45 + 4.5 * Math.cos(12 * t);
+      d += (i ? "L" : "M") + (50 + r * Math.cos(t)).toFixed(2) + " " + (50 + r * Math.sin(t)).toFixed(2);
+    }
+    p.setAttribute("d", d + "Z"); s.appendChild(p); box.appendChild(s); box.appendChild(svg(ICON.ext, "glyph"));
+    return box;
+  }
+
   function render() {
     var list = $("list"); list.textContent = "";
+    if (!loaded) return;
     var items = plugins.filter(function (p) {
       var hay = (p.name + " " + p.id + " " + p.description + " " + p.author).toLowerCase();
       return (!cat || p.category === cat) && hay.indexOf(q) !== -1;
     });
-    if (!items.length) { list.appendChild(el("div", "empty", "Ничего не найдено")); return; }
+    if (!items.length) {
+      var e = el("div", "empty");
+      e.appendChild(cookie());
+      e.appendChild(el("p", null, failed ? "Не удалось загрузить каталог" : plugins.length ? "Ничего не найдено" : "Пока ничего нет"));
+      list.appendChild(e);
+      return;
+    }
+    var group = el("div", "group");
     items.forEach(function (p) {
-      var card = el("div", "card"), ico = el("div", "ico");
+      var card = el("article", "card"), row = el("div", "row"), ico = el("div", "ico");
       var iu = p.icon && safeUrl(p.icon);
       if (iu) { var img = document.createElement("img"); img.src = iu; img.alt = ""; img.loading = "lazy"; ico.appendChild(img); }
       else ico.textContent = (p.name || "?").charAt(0).toUpperCase();
       var body = el("div", "body");
       body.appendChild(el("h2", "name", p.name));
-      body.appendChild(el("div", "id", p.id));
+      body.appendChild(el("div", "sup", [p.author, "v" + p.version, size(p.size || 0)].join(" · ")));
+      body.appendChild(el("div", "pid", p.id));
       if (p.description) body.appendChild(el("p", "desc", p.description));
-      var meta = el("div", "meta");
-      ["v" + p.version, "API " + p.api, p.author, p.category, size(p.size || 0)].forEach(function (t) { meta.appendChild(el("span", "chip", t)); });
-      body.appendChild(meta);
-      if (p.permissions && p.permissions.length) {
-        var pm = el("div", "meta");
-        p.permissions.forEach(function (t) { pm.appendChild(el("span", "chip", t)); });
-        body.appendChild(pm);
-      }
+      row.appendChild(ico); row.appendChild(body); card.appendChild(row);
+      var tags = el("div", "tags");
+      [p.category, "API " + p.api].concat(p.permissions || []).forEach(function (t) { if (t) tags.appendChild(el("span", "tag", t)); });
+      card.appendChild(tags);
       var du = safeUrl(p.url);
-      if (du) { var a = el("a", "btn", "Скачать .ygplugin"); a.href = du; a.rel = "noopener"; body.appendChild(a); }
-      card.appendChild(ico); card.appendChild(body); list.appendChild(card);
+      if (du) {
+        var act = el("div", "actions"), a = el("a", "btn tonal");
+        a.href = du; a.rel = "noopener"; a.appendChild(svg(ICON.download)); a.appendChild(document.createTextNode("Скачать"));
+        act.appendChild(a); card.appendChild(act);
+      }
+      group.appendChild(card);
     });
+    list.appendChild(group);
   }
 
   function cats() {
     var box = $("cats"); box.textContent = "";
-    var names = [""].concat(Array.from(new Set(plugins.map(function (p) { return p.category; }))).sort());
-    names.forEach(function (n) {
-      var b = el("button", "cat", n || "Все"); b.type = "button";
+    var names = Array.from(new Set(plugins.map(function (p) { return p.category; }))).sort();
+    if (names.length < 2) return;
+    [""].concat(names).forEach(function (n) {
+      var b = el("button", "fchip"); b.type = "button";
+      b.appendChild(svg(ICON.check)); b.appendChild(document.createTextNode(n || "Все"));
       b.setAttribute("aria-pressed", String(n === cat));
       b.onclick = function () { cat = n; cats(); render(); };
       box.appendChild(b);
     });
   }
 
-  $("q").addEventListener("input", function (e) { q = e.target.value.trim().toLowerCase(); render(); });
+  $("q").addEventListener("input", function (e) {
+    q = e.target.value.trim().toLowerCase(); $("qclear").hidden = !e.target.value; render();
+  });
+  $("qclear").onclick = function () { $("q").value = ""; q = ""; $("qclear").hidden = true; $("q").focus(); render(); };
+  window.addEventListener("scroll", function () { $("bar").classList.toggle("scrolled", window.scrollY > 4); }, { passive: true });
+
+  var snackTimer;
+  function snack(text) {
+    var s = $("snack"); s.textContent = text; s.classList.add("on");
+    clearTimeout(snackTimer); snackTimer = setTimeout(function () { s.classList.remove("on"); }, 4500);
+  }
+
+  // Отправка плагина на проверку: файл целиком идёт телом запроса, остальное в заголовках.
+  var pub = $("pub"), pstatus = $("pstatus");
+  function say(text, err) { pstatus.textContent = text; pstatus.className = err ? "err" : ""; }
+  $("pubBtn").onclick = function () { say(""); pub.showModal(); };
+  $("pcancel").onclick = function () { pub.close(); };
+  $("pchoose").onclick = function () { $("pfile").click(); };
+  $("pfile").addEventListener("change", function () {
+    var f = $("pfile").files[0];
+    $("pname").textContent = f ? f.name + " · " + size(f.size) : "Файл не выбран (до 64 МБ)";
+  });
+  $("pubForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var f = $("pfile").files[0], contact = $("pcontact").value.trim();
+    if (!f) return say("Выберите файл .ygplugin", true);
+    if (!/\.ygplugin$/i.test(f.name)) return say("Нужен файл с расширением .ygplugin", true);
+    if (f.size > 64 * 1024 * 1024) return say("Файл больше 64 МБ", true);
+    if (!contact) return say("Укажите контакт для связи", true);
+    var btn = $("psend"); btn.disabled = true; say("Отправка…");
+    fetch("/api/publish", {
+      method: "POST",
+      headers: {
+        "X-File-Name": encodeURIComponent(f.name),
+        "X-Contact": encodeURIComponent(contact),
+        "X-Notes": encodeURIComponent($("pnotes").value.trim()),
+        "Content-Type": "application/octet-stream"
+      },
+      body: f
+    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (res.ok) { pub.close(); $("pubForm").reset(); $("pname").textContent = "Файл не выбран (до 64 МБ)"; say(""); snack("Плагин отправлен на проверку"); }
+        else say(res.d.error || "Не удалось отправить", true);
+      })
+      .catch(function () { say("Нет связи с сервером", true); })
+      .then(function () { btn.disabled = false; });
+  });
 
   fetch("index.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (d) {
-    plugins = d.plugins || [];
+    plugins = d.plugins || []; loaded = true;
     $("sub").textContent = "Плагинов: " + plugins.length;
     cats(); render();
-  }).catch(function () { $("sub").textContent = "Не удалось загрузить каталог"; });
+  }).catch(function () { loaded = true; failed = true; $("sub").textContent = "Не удалось загрузить каталог"; render(); })
+    .then(function () { $("progress").classList.remove("on"); });
 })();
 </script>
 </body>
