@@ -22,7 +22,7 @@ MIN_ACCOUNT_DAYS = "7"
 BANNED = ""
 # Client ID из GitHub -> Settings -> Developer settings -> OAuth Apps (не секрет)
 GH_CLIENT_ID = "Ov23libz09WBm1v8rKTg"
-GITHUB_TOKEN = "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"
+GITHUB_TOKEN = "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"
 # Секреты задаются командой `npx wrangler secret put <ИМЯ>` или в панели Cloudflare:
 #   GITHUB_TOKEN, GH_CLIENT_SECRET, SESSION_SECRET
 
