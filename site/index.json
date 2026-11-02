@@ -109,6 +109,30 @@
       "developer": "julfy-0",
       "verified": true,
       "icon": "icons/com.yougram.example.hello.svg"
+    },
+    {
+      "id": "com.yougram.autoresponder",
+      "name": "Smart AutoResponder",
+      "author": "Custom",
+      "version": "2.3.0",
+      "api": "2.3",
+      "description": "Умный автоответчик: учитывает активность (онлайн), отвечает строго один раз и мгновенно сбрасывается при вашем ответе.",
+      "long_description": "Умный автоответчик: учитывает активность (онлайн), отвечает строго один раз и мгновенно сбрасывается при вашем ответе.",
+      "category": "Утилиты",
+      "url": "https://github.com/julfy-0/yougram-plugins/releases/download/submission-mvzwhk3v-dfa47f31/com.yougram.autoresponder-2.3.0.ygplugin",
+      "sha256": "037b7f6ec0bbb4c2a1669ec7a33540076b882a3def605e6892425b81c049d897",
+      "size": 6887,
+      "changelog": "",
+      "permissions": [
+        "chat.read",
+        "chat.send",
+        "chat.modify",
+        "ui"
+      ],
+      "added": 1793662748,
+      "developer": "ex1t44",
+      "verified": true,
+      "icon": "icons/com.yougram.autoresponder.svg"
     }
   ]
 }
