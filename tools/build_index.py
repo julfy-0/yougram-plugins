@@ -5,6 +5,11 @@
 (черновики и пре-релизы пропускаются). Всё, что попадает в каталог, берётся ИЗ САМОГО ПАКЕТА
 (manifest.json, иконка), а sha256 считается по скачанному файлу.
 
+Владелец плагина: воркер сайта (tools/worker.js) ставит в текст черновика метку
+<!-- yg-submit:{"uid":..,"login":..} -->. Первый опубликованный релиз с данным id определяет владельца
+(релиз без метки = мейнтейнер, владельца нет). Дальше релизы с меткой чужого владельца пропускаются,
+релизы без метки (руками мейнтейнера) принимаются всегда. Результат пишется в site/owners.json.
+
 env: REPO=owner/name  GH_TOKEN (необязательно)  API_BASE, ALLOW_HTTP=1 (только для тестов)
 """
 import hashlib, io, json, os, re, sys, urllib.request, zipfile
@@ -22,6 +27,7 @@ VER_RE = re.compile(r"[A-Za-z0-9._-]{1,40}")
 MAX_PKG = 64 * 1024 * 1024      # лимит клиента
 MAX_ICON = 512 * 1024
 MAX_FILES = 200                 # лимит сканера в приложении
+SUBMIT_RE = re.compile(r"<!--\s*yg-submit:(\{.*?\})\s*-->", re.S)
 MAGIC = {".png": b"\x89PNG\r\n\x1a\n", ".jpg": b"\xff\xd8\xff", ".jpeg": b"\xff\xd8\xff", ".webp": b"RIFF"}
 
 
@@ -115,7 +121,6 @@ def read_package(data):
 def main():
     releases = get_json(f"{API}/repos/{REPO}/releases?per_page=100")
     cands = {}      # id -> [dict]
-    first_seen = {}  # id -> самая ранняя дата публикации
     for rel in releases:
         if rel.get("draft") or rel.get("prerelease"):
             continue
@@ -146,11 +151,38 @@ def main():
             except (ValueError, KeyError, zipfile.BadZipFile, json.JSONDecodeError) as e:
                 warn(f"{where}: {e}, пропущено")
                 continue
-            body = (rel.get("body") or "").strip()
+            raw_body = rel.get("body") or ""
+            owner = None
+            mt = SUBMIT_RE.search(raw_body)
+            if mt:
+                try:
+                    o = json.loads(mt.group(1))
+                    if isinstance(o.get("uid"), int) and isinstance(o.get("login"), str):
+                        owner = {"uid": o["uid"], "login": o["login"]}
+                except ValueError:
+                    pass
+            body = SUBMIT_RE.sub("", raw_body).strip()
             c = dict(m=m, icon=icon, ext=ext, url=url, sha=sha, size=len(data), published=published,
-                     changelog=body[:2000])
+                     changelog=body[:2000], owner=owner, where=where)
             cands.setdefault(m["id"], []).append(c)
-            first_seen[m["id"]] = min(first_seen.get(m["id"], published), published)
+
+    owners, first_seen = {}, {}
+    for pid in list(cands):
+        lst = sorted(cands[pid], key=lambda x: x["published"])
+        accepted, owner, owner_set = [], None, False
+        for c in lst:
+            o = c["owner"]
+            if not owner_set:
+                owner, owner_set = o, True
+            elif o is not None and (owner is None or o["uid"] != owner["uid"]):
+                who = f'@{owner["login"]}' if owner else "мейнтейнеру"
+                warn(f'{c["where"]}: релиз от @{o["login"]}, а плагин {pid} принадлежит {who}, пропущено')
+                continue
+            accepted.append(c)
+        cands[pid] = accepted
+        first_seen[pid] = accepted[0]["published"]
+        if owner:
+            owners[pid] = {"id": owner["uid"], "login": owner["login"]}
 
     entries, keep_icons = [], set()
     os.makedirs(f"{SITE}/icons", exist_ok=True)
@@ -194,6 +226,12 @@ def main():
     with open(tmp, "w", encoding="utf-8", newline="\n") as f:
         f.write(out)
     os.replace(tmp, f"{SITE}/index.json")
+
+    # Кто может обновлять плагин через сайт. Публичные данные (GitHub id и логин), как в самом релизе.
+    own = json.dumps(dict(sorted(owners.items())), ensure_ascii=False, indent=2) + "\n"
+    with open(f"{SITE}/owners.json.tmp", "w", encoding="utf-8", newline="\n") as f:
+        f.write(own)
+    os.replace(f"{SITE}/owners.json.tmp", f"{SITE}/owners.json")
     print(f"OK: {len(entries)} плагин(ов): " + ", ".join(f'{e["id"]} {e["version"]}' for e in entries))
 
 

@@ -1,0 +1,19 @@
+name = "yougram-submit"
+main = "tools/worker.js"
+compatibility_date = "2024-11-01"
+
+# Сайт раздаёт тот же воркер, поэтому /api/* работает с того же домена (нужно для cookie-входа).
+[assets]
+directory = "./site"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
+
+[vars]
+REPO = "julfy-0/yougram-plugins"
+# GitHub-логины через запятую: могут обновлять любые плагины через сайт
+ADMINS = "julfy-0"
+# Client ID из GitHub -> Settings -> Developer settings -> OAuth Apps (не секрет)
+GH_CLIENT_ID = ""
+
+# Секреты задаются командой `npx wrangler secret put <ИМЯ>` или в панели Cloudflare:
+#   GITHUB_TOKEN, GH_CLIENT_SECRET, SESSION_SECRET

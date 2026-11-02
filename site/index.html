@@ -128,6 +128,16 @@ dialog h2{margin:0 0 16px;font:400 24px/32px var(--font);letter-spacing:0}
 #pstatus.err{color:var(--error)}
 .dlg-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
 
+/* Account */
+.bar-in{position:relative}
+.acct{position:absolute;right:16px;top:12px;display:flex;align-items:center;gap:8px}
+.acct .ava{width:32px;height:32px;border-radius:50%;background:var(--primary-container);object-fit:cover}
+.acct .who{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:500 14px/20px var(--font)}
+.gate{display:flex;flex-direction:column;align-items:flex-start;gap:16px;margin-bottom:8px}
+.target{margin:0 0 16px;padding:12px 16px;border-radius:12px;background:var(--secondary-container);color:var(--on-secondary-container);font:500 14px/20px var(--font)}
+.target[hidden],.gate[hidden],#pubForm[hidden]{display:none}
+.actions{gap:8px}
+
 /* Snackbar */
 .snack{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom,0px));z-index:9;transform:translate(-50%,16px);max-width:calc(100% - 32px);padding:14px 16px;border-radius:4px;background:var(--inverse-surface);color:var(--inverse-on-surface);font:400 14px/20px var(--font);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
 .snack.on{opacity:1;transform:translate(-50%,0)}
@@ -141,6 +151,7 @@ dialog h2{margin:0 0 16px;font:400 24px/32px var(--font);letter-spacing:0}
   <div class="bar-in">
     <h1>YouGram Plugins</h1>
     <p class="sub" id="sub">Загрузка…</p>
+    <div class="acct" id="acct"></div>
   </div>
   <div class="progress on" id="progress" role="progressbar" aria-label="Загрузка"></div>
 </header>
@@ -161,26 +172,26 @@ dialog h2{margin:0 0 16px;font:400 24px/32px var(--font);letter-spacing:0}
 </button>
 
 <dialog id="pub" aria-labelledby="pubTitle">
-  <form id="pubForm" novalidate>
-    <svg class="dlg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z"/></svg>
-    <h2 id="pubTitle">Опубликовать плагин</h2>
-    <p class="supporting">Файл уйдёт на проверку. Плагин содержит нативный код, поэтому в каталоге он появится только после ручного одобрения.</p>
+  <svg class="dlg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z"/></svg>
+  <h2 id="pubTitle">Опубликовать плагин</h2>
+
+  <div class="gate" id="pgate" hidden>
+    <p class="supporting">Чтобы отправить плагин или обновить свой, войдите через GitHub. Так мы знаем, кому принадлежит плагин, и только вы сможете выпускать его обновления.</p>
+    <a class="btn tonal" href="/api/auth/login">Войти через GitHub</a>
+    <div class="dlg-actions" style="align-self:stretch"><button type="button" class="btn text" id="pgateclose">Закрыть</button></div>
+  </div>
+
+  <form id="pubForm" novalidate hidden>
+    <p class="supporting" id="psupport">Файл уйдёт на проверку. Плагин содержит нативный код, поэтому в каталоге он появится только после ручного одобрения.</p>
+    <p class="target" id="ptarget" hidden></p>
     <div class="filepick">
       <button type="button" class="btn outlined" id="pchoose"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>Выбрать .ygplugin</button>
-      <span id="pname">Файл не выбран (до 64 МБ)</span>
+      <span id="pname">Файл не выбран (до 32 МБ)</span>
       <input type="file" id="pfile" accept=".ygplugin" hidden>
     </div>
     <div class="field">
-      <input type="text" id="ptitle" maxlength="60" placeholder=" " autocomplete="off" required>
-      <label for="ptitle">Название плагина *</label>
-    </div>
-    <div class="field">
-      <textarea id="pdesc" rows="4" maxlength="500" placeholder=" " required></textarea>
-      <label for="pdesc">Описание: что делает плагин *</label>
-    </div>
-    <div class="field">
-      <input type="text" id="pcontact" maxlength="100" placeholder=" " autocomplete="off" required>
-      <label for="pcontact">Контакт: Telegram или почта *</label>
+      <textarea id="pdesc" rows="4" maxlength="1000" placeholder=" " required></textarea>
+      <label for="pdesc" id="pdesclabel">Описание: что делает плагин *</label>
     </div>
     <p id="pstatus" role="status"></p>
     <div class="dlg-actions">
@@ -198,9 +209,11 @@ dialog h2{margin:0 0 16px;font:400 24px/32px var(--font);letter-spacing:0}
   var ICON = {
     check: "M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z",
     download: "M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z",
+    up: "M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z",
     ext: "M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z"
   };
   var plugins = [], cat = "", q = "", loaded = false, failed = false;
+  var user = null, owned = [], target = null;
   var $ = function (id) { return document.getElementById(id); };
 
   function el(tag, cls, text) {
@@ -266,6 +279,12 @@ dialog h2{margin:0 0 16px;font:400 24px/32px var(--font);letter-spacing:0}
       if (du) {
         var act = el("div", "actions"), a = el("a", "btn tonal");
         a.href = du; a.rel = "noopener"; a.appendChild(svg(ICON.download)); a.appendChild(document.createTextNode("Скачать"));
+        if (user && owned.indexOf(p.id) !== -1) {
+          var up = el("button", "btn outlined"); up.type = "button";
+          up.appendChild(svg(ICON.up)); up.appendChild(document.createTextNode("Обновить"));
+          up.onclick = function () { openDialog(p); };
+          act.appendChild(up);
+        }
         act.appendChild(a); card.appendChild(act);
       }
       group.appendChild(card);
@@ -298,44 +317,92 @@ dialog h2{margin:0 0 16px;font:400 24px/32px var(--font);letter-spacing:0}
     clearTimeout(snackTimer); snackTimer = setTimeout(function () { s.classList.remove("on"); }, 4500);
   }
 
-  // Отправка плагина на проверку: файл целиком идёт телом запроса, остальное в заголовках.
+  // Вход через GitHub: сессия живёт в HttpOnly-cookie, JS её не видит. Узнаём, кто мы, через /api/me.
   var pub = $("pub"), pstatus = $("pstatus");
   function say(text, err) { pstatus.textContent = text; pstatus.className = err ? "err" : ""; }
-  $("pubBtn").onclick = function () { say(""); pub.showModal(); };
-  $("pcancel").onclick = function () { pub.close(); };
+
+  function renderAcct() {
+    var box = $("acct"); box.textContent = "";
+    if (!user) {
+      var a = el("a", "btn outlined"); a.href = "/api/auth/login";
+      a.appendChild(document.createTextNode("Войти через GitHub"));
+      a.style.paddingLeft = "24px";
+      box.appendChild(a); return;
+    }
+    var au = user.avatar && safeUrl(user.avatar);
+    if (au && /(^|\.)githubusercontent\.com$/.test(new URL(au).hostname)) {
+      var img = document.createElement("img"); img.className = "ava"; img.src = au; img.alt = ""; box.appendChild(img);
+    }
+    box.appendChild(el("span", "who", user.login));
+    var out = el("button", "btn text", "Выйти"); out.type = "button";
+    out.onclick = function () {
+      fetch("/api/auth/logout", { method: "POST" }).catch(function () {}).then(function () {
+        user = null; owned = []; renderAcct(); render();
+      });
+    };
+    box.appendChild(out);
+  }
+
+  function loadMe() {
+    return fetch("/api/me", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (d) {
+      user = d.user || null; owned = d.owned || [];
+    }).catch(function () { user = null; owned = []; })
+      .then(function () { renderAcct(); render(); });
+  }
+
+  function openDialog(p) {
+    target = p || null;
+    say("");
+    $("pubTitle").textContent = target ? "Обновить плагин" : "Опубликовать плагин";
+    $("pgate").hidden = !!user;
+    $("pubForm").hidden = !user;
+    $("ptarget").hidden = !target;
+    if (target) $("ptarget").textContent = target.name + " · сейчас v" + target.version + " · нужна версия выше";
+    $("pdesclabel").textContent = target ? "Что изменилось *" : "Описание: что делает плагин *";
+    $("psupport").textContent = target
+      ? "Загрузите новую сборку этого плагина. В manifest.json поднимите version. Обновление выйдет после проверки."
+      : "Файл уйдёт на проверку. Плагин содержит нативный код, поэтому в каталоге он появится только после ручного одобрения. Если плагин с таким id уже ваш, это будет обновление.";
+    pub.showModal();
+  }
+  $("pubBtn").onclick = function () { openDialog(null); };
+  $("pcancel").onclick = $("pgateclose").onclick = function () { pub.close(); };
   $("pchoose").onclick = function () { $("pfile").click(); };
   $("pfile").addEventListener("change", function () {
     var f = $("pfile").files[0];
-    $("pname").textContent = f ? f.name + " · " + size(f.size) : "Файл не выбран (до 64 МБ)";
+    $("pname").textContent = f ? f.name + " · " + size(f.size) : "Файл не выбран (до 32 МБ)";
   });
   $("pubForm").addEventListener("submit", function (e) {
     e.preventDefault();
-    var f = $("pfile").files[0], title = $("ptitle").value.trim(), desc = $("pdesc").value.trim(), contact = $("pcontact").value.trim();
+    var f = $("pfile").files[0], desc = $("pdesc").value.trim();
     if (!f) return say("Выберите файл .ygplugin", true);
     if (!/\.ygplugin$/i.test(f.name)) return say("Нужен файл с расширением .ygplugin", true);
-    if (f.size > 64 * 1024 * 1024) return say("Файл больше 64 МБ", true);
-    if (title.length < 2) return say("Укажите название плагина", true);
-    if (desc.length < 10) return say("Добавьте описание: хотя бы 10 символов о том, что делает плагин", true);
-    if (!contact) return say("Укажите контакт для связи", true);
+    if (f.size > 32 * 1024 * 1024) return say("Через сайт можно отправить файл до 32 МБ", true);
+    if (desc.length < 10) return say(target ? "Опишите, что изменилось (минимум 10 символов)" : "Добавьте описание: хотя бы 10 символов о том, что делает плагин", true);
     var btn = $("psend"); btn.disabled = true; say("Отправка…");
-    fetch("/api/publish", {
-      method: "POST",
-      headers: {
-        "X-File-Name": encodeURIComponent(f.name),
-        "X-Plugin-Name": encodeURIComponent(title),
-        "X-Description": encodeURIComponent(desc),
-        "X-Contact": encodeURIComponent(contact),
-        "Content-Type": "application/octet-stream"
-      },
-      body: f
-    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; }); })
+    var headers = {
+      "X-File-Name": encodeURIComponent(f.name),
+      "X-Description": encodeURIComponent(desc),
+      "Content-Type": "application/octet-stream"
+    };
+    if (target) headers["X-Plugin-Id"] = encodeURIComponent(target.id);
+    fetch("/api/publish", { method: "POST", headers: headers, body: f })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, status: r.status, d: d }; }); })
       .then(function (res) {
-        if (res.ok) { pub.close(); $("pubForm").reset(); $("pname").textContent = "Файл не выбран (до 64 МБ)"; say(""); snack("Плагин отправлен на проверку"); }
+        if (res.ok) {
+          pub.close(); $("pubForm").reset(); $("pname").textContent = "Файл не выбран (до 32 МБ)"; say("");
+          snack((res.d.kind === "update" ? "Обновление " : "Плагин ") + (res.d.name || "") + " " + (res.d.version || "") + " отправлено на проверку");
+        } else if (res.status === 401) { user = null; renderAcct(); render(); openDialog(target); }
         else say(res.d.error || "Не удалось отправить", true);
       })
       .catch(function () { say("Нет связи с сервером", true); })
       .then(function () { btn.disabled = false; });
   });
+
+  if (/[?&]auth=error/.test(location.search)) {
+    history.replaceState(null, "", location.pathname);
+    snack("Не удалось войти через GitHub. Попробуйте ещё раз");
+  }
+  loadMe();
 
   fetch("index.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (d) {
     plugins = d.plugins || []; loaded = true;
