@@ -1,0 +1,5 @@
+*.ygplugin binary
+*.so binary
+*.png binary
+*.jpg binary
+*.webp binary
