@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """python pack.py <папка_плагина> [out.ygplugin]
 Папка: manifest.json + icon.png + lib/arm64-v8a/libX.so (+ lib/armeabi-v7a/...)
-В manifest.json: "icon": "icon.png"  (png/webp/jpg, лучше квадрат 256x256, до 512 КБ)"""
+В manifest.json: "icon": "icon.png"  (png/webp/jpg, лучше квадрат 256x256, до 512 КБ)
+или векторная: "icon": "icon.svg" / "icon.xml" (SVG или Android VectorDrawable, до 64 КБ): приложение красит её в акцентный цвет темы"""
 import json, os, struct, sys, zipfile
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
+import vector_icon
 
 MIN_API, MAX_API = (2, 1), (2, 2)  # как в приложении: PluginApiVersion (MIN_MINOR..MINOR). Поднимай MAX_API вместе с приложением.
 
@@ -28,8 +32,12 @@ if not icon:
 else:
     p = os.path.join(src, icon)
     assert os.path.isfile(p), f"иконка {icon} не найдена в папке плагина"
-    assert icon.lower().endswith((".png", ".webp", ".jpg", ".jpeg")), "иконка: png, webp или jpg (svg приложение не покажет)"
-    assert os.path.getsize(p) <= 512 * 1024, "иконка больше 512 КБ"
+    assert icon.lower().endswith((".png", ".webp", ".jpg", ".jpeg", ".svg", ".xml")), "иконка: png, webp, jpg, svg или xml (Android vector)"
+    if icon.lower().endswith((".svg", ".xml")):
+        with open(p, "rb") as f:
+            vector_icon.sanitize(f.read())  # бросит ValueError с понятной причиной, если иконка не подойдёт
+    else:
+        assert os.path.getsize(p) <= 512 * 1024, "иконка больше 512 КБ"
     if icon.lower().endswith(".png"):
         with open(p, "rb") as f:
             h = f.read(24)

@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """python publish.py my.ygplugin [--category Утилиты] [--icon icon.png]
                     [--long "..."] [--changelog "..."]"""
-import argparse, hashlib, json, os, re, shutil, time, zipfile
+import argparse, hashlib, json, os, re, shutil, sys, time, zipfile
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
+import vector_icon
 
 SITE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "site")
 INDEX = os.path.join(SITE, "index.json")
@@ -37,8 +40,14 @@ with open(dst, "rb") as f:
 
 icon = None
 if a.icon:
-    icon = f"icons/{pid}{os.path.splitext(a.icon)[1].lower()}"
-    shutil.copyfile(a.icon, f"{SITE}/{icon}")
+    ext = os.path.splitext(a.icon)[1].lower()
+    if ext in (".svg", ".xml"):  # векторную иконку пересобираем в чистый svg (без скриптов)
+        icon = f"icons/{pid}.svg"
+        with open(a.icon, "rb") as f, open(f"{SITE}/{icon}", "wb") as out:
+            out.write(vector_icon.sanitize(f.read()))
+    else:
+        icon = f"icons/{pid}{ext}"
+        shutil.copyfile(a.icon, f"{SITE}/{icon}")
 
 data = {"plugins": []}
 if os.path.exists(INDEX):

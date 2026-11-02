@@ -15,6 +15,9 @@ env: REPO=owner/name  GH_TOKEN (необязательно)  API_BASE, ALLOW_HTT
 import hashlib, io, json, os, re, sys, urllib.request, zipfile
 from datetime import datetime
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import vector_icon  # svg / Android vector xml -> безопасный svg
+
 REPO = os.environ["REPO"]
 TOKEN = os.environ.get("GH_TOKEN", "")
 API = os.environ.get("API_BASE", "https://api.github.com")
@@ -122,7 +125,9 @@ def read_package(data):
         if norm.startswith("/") or ".." in norm.split("/") or norm not in names:
             raise ValueError(f"иконка {name} не найдена в пакете")
         icon = z.read(names[norm])
-        if ext not in MAGIC or len(icon) > MAX_ICON or not icon.startswith(MAGIC[ext]) \
+        if ext in (".svg", ".xml"):
+            icon, ext = vector_icon.sanitize(icon), ".svg"  # в каталог попадает только пересобранный чистый svg
+        elif ext not in MAGIC or len(icon) > MAX_ICON or not icon.startswith(MAGIC[ext]) \
                 or (ext == ".webp" and icon[8:12] != b"WEBP"):
             raise ValueError("иконка повреждена, не png/webp/jpg или больше 512 КБ")
     return m, icon, ext
