@@ -13,7 +13,8 @@ REPO = "julfy-0/yougram-plugins"
 # GitHub-логины через запятую: могут обновлять любые плагины через сайт
 ADMINS = "julfy-0"
 # Client ID из GitHub -> Settings -> Developer settings -> OAuth Apps (не секрет)
-GH_CLIENT_ID = ""
+name = "yougram-plugins"
+GH_CLIENT_ID = "Ov23libz09WBm1v8rKTg"
 
 # Секреты задаются командой `npx wrangler secret put <ИМЯ>` или в панели Cloudflare:
 #   GITHUB_TOKEN, GH_CLIENT_SECRET, SESSION_SECRET
