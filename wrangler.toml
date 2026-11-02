@@ -11,7 +11,7 @@ run_worker_first = ["/api/*"]
 [vars]
 REPO = "julfy-0/yougram-plugins"
 # GitHub-логины через запятую: могут обновлять любые плагины через сайт
-ADMINS = "julfy-0"
+ADMINS = "julfy-0,ex1t44"
 # Публикация без ручной проверки: off = всё через черновик, updates = обновления сразу, all = всё сразу
 AUTO_APPROVE = "off"
 # Доверенные разработчики: GitHub-логины через запятую, их плагины публикуются сразу
@@ -22,7 +22,7 @@ MIN_ACCOUNT_DAYS = "7"
 BANNED = ""
 # Client ID из GitHub -> Settings -> Developer settings -> OAuth Apps (не секрет)
 GH_CLIENT_ID = "Ov23libz09WBm1v8rKTg"
-GITHUB_TOKEN = "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"
+GITHUB_TOKEN = "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"
 # Секреты задаются командой `npx wrangler secret put <ИМЯ>` или в панели Cloudflare:
 #   GITHUB_TOKEN, GH_CLIENT_SECRET, SESSION_SECRET
 
