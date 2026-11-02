@@ -105,7 +105,10 @@ function authConfigured(env) {
 }
 
 function login(url, env) {
-  if (!authConfigured(env)) return json({ error: "Вход через GitHub не настроен" }, 500);
+  if (!authConfigured(env)) {
+    const missing = ["GH_CLIENT_ID", "GH_CLIENT_SECRET", "SESSION_SECRET"].filter((k) => !env[k]);
+    return json({ error: "Вход через GitHub не настроен", missing }, 500);
+  }
   const state = b64u.enc(crypto.getRandomValues(new Uint8Array(24)));
   const q = new URLSearchParams({
     client_id: env.GH_CLIENT_ID,
