@@ -15,6 +15,8 @@
 //   GH_CLIENT_ID     переменная: Client ID из GitHub OAuth App
 //   REPO             переменная: owner/name репозитория каталога
 //   ADMINS           переменная: GitHub-логины через запятую (могут обновлять любые плагины)
+//   TRUSTED          переменная: логины доверенных разработчиков через запятую (их плагины публикуются сразу)
+//   AUTO_APPROVE     переменная: off | updates | all, режим для всех остальных
 //
 // Черновики не попадают в каталог (tools/build_index.py их пропускает), пока владелец не нажмёт Publish.
 // Владельца плагина определяет build_index.py по метке в тексте релиза, её ставит только этот воркер.
@@ -432,9 +434,11 @@ async function publish(request, url, env) {
 
   // Публиковать сразу или оставить черновиком до ручного одобрения.
   const mode = String(env.AUTO_APPROVE || "off").toLowerCase();
-  let auto = isAdmin(env, user) || mode === "all" || (mode === "updates" && kind === "update");
+  // Доверенные разработчики (TRUSTED) публикуются сразу при любом режиме и без проверки возраста аккаунта.
+  const trusted = isAdmin(env, user) || list(env.TRUSTED).includes(user.login.toLowerCase());
+  let auto = trusted || mode === "all" || (mode === "updates" && kind === "update");
   let reason = "";
-  if (auto && kind === "new" && !isAdmin(env, user)) {
+  if (auto && kind === "new" && !trusted) {
     const minDays = Number(env.MIN_ACCOUNT_DAYS || 0);
     if (minDays > 0 && (await accountAgeDays(env, user.login, ghHeaders)) < minDays) {
       auto = false;
