@@ -465,7 +465,10 @@ async function publish(request, url, env) {
       make_latest: "false",
     }),
   });
-  if (!created.ok) return json({ error: "Не удалось создать заявку" }, 502);
+  if (!created.ok) {
+    const detail = (await created.text().catch(() => "")).slice(0, 200);
+    return json({ error: `Не удалось создать заявку (GitHub ${created.status}): ${detail}` }, 502);
+  }
   const release = await created.json();
 
   const rel = `https://api.github.com/repos/${env.REPO}/releases/${release.id}`;
@@ -476,7 +479,7 @@ async function publish(request, url, env) {
   );
   if (!upload.ok) {
     await fetch(rel, { method: "DELETE", headers: ghHeaders });
-    return json({ error: "Не удалось загрузить файл" }, 502);
+    return json({ error: `Не удалось загрузить файл (GitHub ${upload.status})` }, 502);
   }
 
   // Публикуем только после загрузки файла: событие release.published запускает сборку каталога.
