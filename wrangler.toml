@@ -25,3 +25,8 @@ GH_CLIENT_ID = "Ov23libz09WBm1v8rKTg"
 GITHUB_TOKEN = "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"
 # Секреты задаются командой `npx wrangler secret put <ИМЯ>` или в панели Cloudflare:
 #   GITHUB_TOKEN, GH_CLIENT_SECRET, SESSION_SECRET
+
+# Хранилище отзывов и жалоб. Создайте: `npx wrangler kv namespace create FEEDBACK` и вставьте выданный id.
+[[kv_namespaces]]
+binding = "FEEDBACK"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"

@@ -5,13 +5,8 @@
 //   GET  /api/auth/callback  -> обмен кода на профиль, выдача подписанной cookie-сессии
 //   POST /api/auth/logout    -> выход
 //   GET  /api/me             -> {user, admin, owned: [id плагинов, которые можно обновлять]}
+//   GET  /api/ratings, GET|POST|DELETE /api/reviews, GET|POST|DELETE /api/reports -> отзывы и жалобы (KV FEEDBACK)
 //   POST /api/publish        -> новый плагин или обновление; файл уходит ЧЕРНОВИКОМ релиза в GitHub
-//   GET  /api/ratings       -> {ratings: {id плагина: {avg, count}}}
-//   GET  /api/reviews?plugin=ID -> отзывы плагина + можно ли оставить свой
-//   POST /api/review        -> {plugin, rating 1-5, text}: свой отзыв (один на плагин, повторный = обновление)
-//   DELETE /api/review?plugin=ID[&login=x] -> удалить свой отзыв (админ: чужой)
-//   POST /api/report        -> {plugin, reason, text}: жалоба на плагин
-// Отзывы и жалобы хранятся как issues в REPO с метками yg-review и yg-report (токену нужно право Issues: Read and write).
 // Всё остальное отдаёт статика из site/ (binding ASSETS).
 //
 // Секреты/переменные (Cloudflare -> Settings -> Variables and Secrets, в репозиторий не класть):
@@ -498,245 +493,184 @@ async function publish(request, url, env) {
   return json({ ok: true, kind, id: m.id, name: marker.name || m.name, version: m.version, published, reason });
 }
 
-// ---------- отзывы и жалобы: хранятся как issues в REPO (метки yg-review, yg-report) ----------
-// Метки ставит только этот воркер (обычные пользователи не могут), поэтому доверяем меткам в теле issue.
-// Убрать отзыв: закрыть issue на GitHub. Жалобы приходят владельцу репозитория обычным уведомлением об issue.
+// ---------- отзывы и жалобы (Cloudflare KV, привязка FEEDBACK) ----------
+// Пользователь приложения анонимен: клиент генерирует случайный device-id, сервер хранит только его хеш.
+// Один отзыв и одна жалоба на устройство и плагин (повторная отправка заменяет прежнюю).
+// Ключи KV: rv:<plugin> -> {by: {rating,text,name,ts}}, ratings -> {plugin: {sum,count}}, reports -> [жалобы].
 
-const REVIEW_LABEL = "yg-review";
-const REPORT_LABEL = "yg-report";
-const REVIEW_RE = /<!--\s*yg-review:(\{.*?\})\s*-->/s;
-const REPORT_RE = /<!--\s*yg-report:(\{.*?\})\s*-->/s;
 const REASONS = {
-  malware: "Вредоносное поведение",
-  fake: "Обман или подделка",
+  malware: "Вредоносный код или слежка",
+  scam: "Мошенничество или обман",
   broken: "Не работает или ломает приложение",
-  copyright: "Нарушение прав",
+  copyright: "Нарушение авторских прав",
   other: "Другое",
 };
+const MAX_REVIEWS = 300;
+const MAX_REPORTS = 500;
+const DEV_RE = /^[a-f0-9]{32}$/;
 
-const ghAuth = (env) => ({
-  Authorization: `Bearer ${env.GITHUB_TOKEN}`,
-  Accept: "application/vnd.github+json",
-  "User-Agent": UA,
-  "X-GitHub-Api-Version": "2022-11-28",
-});
-
-// Открытые issues с меткой; из тела берём JSON-метку (uid, plugin, ...) и текст после неё.
-async function listIssues(env, label, re) {
-  const out = [];
-  for (let page = 1; page <= 5; page++) {
-    const r = await fetch(
-      `https://api.github.com/repos/${env.REPO}/issues?labels=${label}&state=open&per_page=100&page=${page}`,
-      { headers: ghAuth(env) },
-    ).catch(() => null);
-    if (!r || !r.ok) return page === 1 ? null : out;
-    const rows = await r.json().catch(() => []);
-    for (const it of rows) {
-      if (it.pull_request) continue;
-      const body = it.body || "";
-      const m = re.exec(body);
-      if (!m) continue;
-      let meta;
-      try {
-        meta = JSON.parse(m[1]);
-      } catch {
-        continue;
-      }
-      if (!meta || !Number.isInteger(meta.uid) || typeof meta.plugin !== "string") continue;
-      out.push({
-        n: it.number,
-        meta,
-        text: body.slice(m.index + m[0].length).trim(),
-        ts: Math.floor(Date.parse(it.updated_at || it.created_at) / 1000) || 0,
-      });
-    }
-    if (rows.length < 100) break;
-  }
-  return out;
+async function sha256hex(s) {
+  const d = await crypto.subtle.digest("SHA-256", enc.encode(s));
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-// Кэш отзывов на 30 с в памяти воркера, чтобы не упираться в лимит GitHub API (общий с публикацией плагинов).
-let reviewCache = { t: 0, v: null };
-async function allReviews(env, fresh) {
-  const age = Date.now() - reviewCache.t;
-  if (reviewCache.v && (fresh ? age < 5000 : age < 30000)) return reviewCache.v;
-  const v = await listIssues(env, REVIEW_LABEL, REVIEW_RE);
-  if (v) reviewCache = { t: Date.now(), v };
-  return v || reviewCache.v;
+const devHash = async (device) => (await sha256hex("yg-fb:" + device)).slice(0, 24);
+const kvGet = async (env, key, def) => (await env.FEEDBACK.get(key, "json")) ?? def;
+const nowSec = () => Math.floor(Date.now() / 1000);
+
+// Не больше max записей в час с одного IP (счётчик живёт в KV 2 часа).
+async function limited(env, request, kind, max) {
+  const ip = request.headers.get("cf-connecting-ip") || "?";
+  const key = `rl:${kind}:${(await sha256hex(ip)).slice(0, 16)}:${Math.floor(Date.now() / 3600000)}`;
+  const n = Number(await env.FEEDBACK.get(key)) || 0;
+  if (n >= max) return true;
+  await env.FEEDBACK.put(key, String(n + 1), { expirationTtl: 7200 });
+  return false;
 }
 
-const validRating = (r) => Number.isInteger(r) && r >= 1 && r <= 5;
-
-function summarize(rows) {
-  const acc = {};
-  for (const r of rows) {
-    if (!validRating(r.meta.rating)) continue;
-    const x = acc[r.meta.plugin] || (acc[r.meta.plugin] = { sum: 0, count: 0 });
-    x.sum += r.meta.rating;
-    x.count++;
-  }
-  const out = {};
-  for (const id of Object.keys(acc)) out[id] = { avg: Math.round((acc[id].sum / acc[id].count) * 10) / 10, count: acc[id].count };
-  return out;
+async function pluginExists(env, request, id) {
+  const { plugins } = await catalog(env, request);
+  return Boolean(plugins && plugins.some((p) => p.id === id));
 }
 
-async function readJson(request) {
-  const len = Number(request.headers.get("content-length"));
-  if (!Number.isFinite(len) || len < 2 || len > 8192) return null;
+async function readBody(request) {
   try {
-    const v = await request.json();
-    return v && typeof v === "object" ? v : null;
+    const b = await request.json();
+    return b && typeof b === "object" ? b : null;
   } catch {
     return null;
   }
 }
 
-// Общие проверки для записи: вход, бан, CSRF, настройки.
-async function writeGuard(request, url, env) {
-  const user = await readSession(request, env);
-  if (!user) return { res: json({ error: "Войдите через GitHub", login: true }, 401) };
-  if (list(env.BANNED).includes(user.login.toLowerCase())) return { res: json({ error: "Для этого аккаунта действие закрыто" }, 403) };
-  const origin = request.headers.get("origin");
-  if (origin && origin !== url.origin) return { res: json({ error: "Запрос с чужого сайта" }, 403) };
-  if (!env.GITHUB_TOKEN || !env.REPO) return { res: json({ error: "Сервер не настроен" }, 500) };
-  return { user };
+async function adminUser(request, env) {
+  const u = await readSession(request, env);
+  return u && isAdmin(env, u) ? u : null;
 }
 
-const markerJson = (o) => JSON.stringify(o).replace(/>/g, "\\u003e").replace(/</g, "\\u003c");
-
-async function ratings(env) {
-  if (!env.GITHUB_TOKEN || !env.REPO) return json({ ratings: {} });
-  const rows = await allReviews(env, false);
-  return json({ ratings: rows ? summarize(rows) : {} });
+async function saveRating(env, id, map) {
+  const all = await kvGet(env, "ratings", {});
+  const vals = Object.values(map);
+  if (vals.length) all[id] = { sum: vals.reduce((s, r) => s + r.rating, 0), count: vals.length };
+  else delete all[id];
+  await env.FEEDBACK.put("ratings", JSON.stringify(all));
 }
 
-async function reviewsFor(request, url, env) {
-  const id = url.searchParams.get("plugin") || "";
-  if (!ID_RE.test(id)) return json({ error: "Некорректный плагин" }, 400);
-  if (!env.GITHUB_TOKEN || !env.REPO) return json({ error: "Сервер не настроен" }, 500);
-  const user = await readSession(request, env);
-  const rows = await allReviews(env, Boolean(user) && url.searchParams.get("fresh") === "1");
-  if (!rows) return json({ error: "Отзывы сейчас недоступны, попробуйте позже" }, 503);
-  const mine = (r) => Boolean(user) && r.meta.uid === user.uid;
-  const reviews = rows
-    .filter((r) => r.meta.plugin === id && validRating(r.meta.rating))
-    .sort((a, b) => b.ts - a.ts)
-    .slice(0, 100)
-    .map((r) => ({
-      login: String(r.meta.login || "").replace(/[^A-Za-z0-9-]/g, "").slice(0, 39),
-      rating: r.meta.rating,
-      text: r.text.slice(0, 600),
-      ts: r.ts,
-      mine: mine(r),
-    }));
-  const { owners } = await catalog(env, request);
-  const isOwner = Boolean(user) && Boolean(owners[id]) && owners[id].id === user.uid;
-  return json({
-    summary: summarize(rows)[id] || { avg: 0, count: 0 },
-    reviews,
-    signedIn: Boolean(user),
-    canReview: Boolean(user) && !isOwner,
-    admin: Boolean(user) && isAdmin(env, user),
-  });
-}
-
-async function postReview(request, url, env) {
-  const g = await writeGuard(request, url, env);
-  if (g.res) return g.res;
-  const user = g.user;
-  const b = await readJson(request);
-  if (!b) return json({ error: "Некорректный запрос" }, 400);
-  const id = cleanLine(b.plugin, 120);
-  const rating = Number(b.rating);
-  const text = cleanText(b.text, 500);
-  if (!validRating(rating)) return json({ error: "Поставьте оценку от 1 до 5" }, 400);
-
-  const { plugins, owners } = await catalog(env, request);
-  const plugin = plugins && plugins.find((p) => p.id === id);
-  if (!plugin) return json({ error: "Такого плагина нет в каталоге" }, 404);
-  if (owners[id] && owners[id].id === user.uid) return json({ error: "Нельзя оценивать свой плагин" }, 403);
-
-  const rows = await allReviews(env, true);
-  if (!rows) return json({ error: "Отзывы сейчас недоступны, попробуйте позже" }, 503);
-  const prev = rows.find((r) => r.meta.plugin === id && r.meta.uid === user.uid);
-
-  const title = `Отзыв: ${cleanLine(plugin.name, 60)} ${"★".repeat(rating)} (@${user.login})`;
-  const body = `<!-- yg-review:${markerJson({ uid: user.uid, login: user.login, plugin: id, rating })} -->\n${text}`;
-  const res = prev
-    ? await fetch(`https://api.github.com/repos/${env.REPO}/issues/${prev.n}`, {
-        method: "PATCH",
-        headers: { ...ghAuth(env), "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body }),
-      })
-    : await fetch(`https://api.github.com/repos/${env.REPO}/issues`, {
-        method: "POST",
-        headers: { ...ghAuth(env), "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body, labels: [REVIEW_LABEL] }),
-      });
-  if (!res.ok) return json({ error: "Не удалось сохранить отзыв" }, 502);
-  reviewCache = { t: 0, v: null };
-  return json({ ok: true, updated: Boolean(prev) });
-}
-
-async function deleteReview(request, url, env) {
-  const g = await writeGuard(request, url, env);
-  if (g.res) return g.res;
-  const user = g.user;
-  const id = url.searchParams.get("plugin") || "";
-  const target = (url.searchParams.get("login") || "").toLowerCase();
-  if (!ID_RE.test(id)) return json({ error: "Некорректный плагин" }, 400);
-  const rows = await allReviews(env, true);
-  if (!rows) return json({ error: "Отзывы сейчас недоступны, попробуйте позже" }, 503);
-  const admin = isAdmin(env, user);
-  const row = rows.find(
-    (r) => r.meta.plugin === id && (admin && target ? String(r.meta.login || "").toLowerCase() === target : r.meta.uid === user.uid),
-  );
-  if (!row) return json({ error: "Отзыв не найден" }, 404);
-  const res = await fetch(`https://api.github.com/repos/${env.REPO}/issues/${row.n}`, {
-    method: "PATCH",
-    headers: { ...ghAuth(env), "Content-Type": "application/json" },
-    body: JSON.stringify({ state: "closed", state_reason: "not_planned" }),
-  });
-  if (!res.ok) return json({ error: "Не удалось удалить отзыв" }, 502);
-  reviewCache = { t: 0, v: null };
-  return json({ ok: true });
-}
-
-async function postReport(request, url, env) {
-  const g = await writeGuard(request, url, env);
-  if (g.res) return g.res;
-  const user = g.user;
-  const b = await readJson(request);
-  if (!b) return json({ error: "Некорректный запрос" }, 400);
-  const id = cleanLine(b.plugin, 120);
-  const reason = String(b.reason || "");
-  const text = cleanText(b.text, 500);
-  if (!Object.prototype.hasOwnProperty.call(REASONS, reason)) return json({ error: "Выберите причину жалобы" }, 400);
-  if (text.length < 10) return json({ error: "Опишите, что не так (минимум 10 символов)" }, 400);
-
-  const { plugins, owners } = await catalog(env, request);
-  const plugin = plugins && plugins.find((p) => p.id === id);
-  if (!plugin) return json({ error: "Такого плагина нет в каталоге" }, 404);
-  if (owners[id] && owners[id].id === user.uid) return json({ error: "Нельзя жаловаться на свой плагин" }, 403);
-
-  const open = await listIssues(env, REPORT_LABEL, REPORT_RE);
-  if (!open) return json({ error: "Не удалось отправить жалобу, попробуйте позже" }, 503);
-  if (open.some((r) => r.meta.plugin === id && r.meta.uid === user.uid)) {
-    return json({ error: "Вы уже отправили жалобу на этот плагин, мы её рассмотрим" }, 409);
+async function getRatings(env) {
+  const all = await kvGet(env, "ratings", {});
+  const out = {};
+  for (const [id, v] of Object.entries(all)) {
+    if (v && v.count > 0) out[id] = { avg: Math.round((v.sum / v.count) * 10) / 10, count: v.count };
   }
+  return json({ ratings: out });
+}
 
-  const version = cleanLine(plugin.version, 40);
-  const title = `Жалоба: ${cleanLine(plugin.name, 60)}, ${REASONS[reason].toLowerCase()} (@${user.login})`;
-  const body =
-    `<!-- yg-report:${markerJson({ uid: user.uid, login: user.login, plugin: id, reason, version })} -->\n` +
-    `Плагин: ${id} v${version}\nПричина: ${REASONS[reason]}\n\n${text}`;
-  const res = await fetch(`https://api.github.com/repos/${env.REPO}/issues`, {
-    method: "POST",
-    headers: { ...ghAuth(env), "Content-Type": "application/json" },
-    body: JSON.stringify({ title, body, labels: [REPORT_LABEL] }),
-  });
-  if (!res.ok) return json({ error: "Не удалось отправить жалобу" }, 502);
+async function getReviews(url, env) {
+  const id = url.searchParams.get("id") || "";
+  if (!ID_RE.test(id)) return json({ error: "Некорректный id" }, 400);
+  const device = url.searchParams.get("device") || "";
+  const me = DEV_RE.test(device) ? await devHash(device) : "";
+  const map = await kvGet(env, `rv:${id}`, {});
+  const reviews = Object.entries(map)
+    .sort((a, b) => b[1].ts - a[1].ts)
+    .slice(0, 50)
+    .map(([by, r]) => ({ by, rating: r.rating, text: r.text, name: r.name, ts: r.ts, mine: by === me }));
+  return json({ reviews });
+}
+
+async function postReview(request, env) {
+  const b = await readBody(request);
+  if (!b) return json({ error: "Некорректный запрос" }, 400);
+  const id = String(b.plugin || "");
+  const device = String(b.device || "");
+  const rating = Number(b.rating);
+  const text = String(b.text || "").trim().slice(0, 500);
+  const name = String(b.name || "").trim().slice(0, 30);
+  if (!ID_RE.test(id) || !DEV_RE.test(device) || !Number.isInteger(rating) || rating < 1 || rating > 5) {
+    return json({ error: "Некорректные данные отзыва" }, 400);
+  }
+  if (await limited(env, request, "rv", 20)) return json({ error: "Слишком много запросов, попробуйте позже" }, 429);
+  if (!(await pluginExists(env, request, id))) return json({ error: "Такого плагина нет в каталоге" }, 404);
+
+  const by = await devHash(device);
+  const key = `rv:${id}`;
+  const map = await kvGet(env, key, {});
+  map[by] = { rating, text, name, ts: nowSec() };
+  const keys = Object.keys(map);
+  if (keys.length > MAX_REVIEWS) {
+    keys.sort((a, b) => map[a].ts - map[b].ts).slice(0, keys.length - MAX_REVIEWS).forEach((k) => delete map[k]);
+  }
+  await env.FEEDBACK.put(key, JSON.stringify(map));
+  await saveRating(env, id, map);
   return json({ ok: true });
+}
+
+// Свой отзыв удаляется по device, любой — админом сайта (cookie-сессия) по by.
+async function deleteReview(request, url, env) {
+  const id = url.searchParams.get("id") || "";
+  if (!ID_RE.test(id)) return json({ error: "Некорректный id" }, 400);
+  const device = url.searchParams.get("device") || "";
+  let by = "";
+  if (DEV_RE.test(device)) by = await devHash(device);
+  else if (await adminUser(request, env)) by = url.searchParams.get("by") || "";
+  else return json({ error: "Нет доступа" }, 403);
+  const key = `rv:${id}`;
+  const map = await kvGet(env, key, {});
+  if (!map[by]) return json({ error: "Отзыв не найден" }, 404);
+  delete map[by];
+  await env.FEEDBACK.put(key, JSON.stringify(map));
+  await saveRating(env, id, map);
+  return json({ ok: true });
+}
+
+async function postReport(request, env) {
+  const b = await readBody(request);
+  if (!b) return json({ error: "Некорректный запрос" }, 400);
+  const id = String(b.plugin || "");
+  const device = String(b.device || "");
+  const reason = String(b.reason || "");
+  const text = String(b.text || "").trim().slice(0, 1000);
+  if (!ID_RE.test(id) || !DEV_RE.test(device) || !REASONS[reason]) return json({ error: "Некорректные данные жалобы" }, 400);
+  if (await limited(env, request, "rp", 10)) return json({ error: "Слишком много запросов, попробуйте позже" }, 429);
+  if (!(await pluginExists(env, request, id))) return json({ error: "Такого плагина нет в каталоге" }, 404);
+
+  const by = await devHash(device);
+  const list = (await kvGet(env, "reports", [])).filter((r) => !(r.plugin === id && r.by === by));
+  list.unshift({ plugin: id, by, reason, text, ts: nowSec() });
+  await env.FEEDBACK.put("reports", JSON.stringify(list.slice(0, MAX_REPORTS)));
+  return json({ ok: true });
+}
+
+// Список жалоб для админов (откройте /api/reports в браузере, где вы вошли на сайте).
+async function getReports(request, env) {
+  if (!(await adminUser(request, env))) return json({ error: "Нет доступа" }, 403);
+  const list = await kvGet(env, "reports", []);
+  return json({ count: list.length, reports: list.map((r) => ({ ...r, reason_text: REASONS[r.reason] || r.reason, date: new Date(r.ts * 1000).toISOString() })) });
+}
+
+async function dismissReport(request, url, env) {
+  if (!(await adminUser(request, env))) return json({ error: "Нет доступа" }, 403);
+  const plugin = url.searchParams.get("plugin") || "";
+  const by = url.searchParams.get("by") || ""; // пусто = закрыть все жалобы на плагин
+  const list = await kvGet(env, "reports", []);
+  const rest = list.filter((r) => !(r.plugin === plugin && (!by || r.by === by)));
+  await env.FEEDBACK.put("reports", JSON.stringify(rest));
+  return json({ ok: true, removed: list.length - rest.length });
+}
+
+function feedbackRoute(path, method, request, url, env) {
+  const map = [
+    ["/api/ratings", "GET", () => getRatings(env)],
+    ["/api/reviews", "GET", () => getReviews(url, env)],
+    ["/api/reviews", "POST", () => postReview(request, env)],
+    ["/api/reviews", "DELETE", () => deleteReview(request, url, env)],
+    ["/api/reports", "GET", () => getReports(request, env)],
+    ["/api/reports", "POST", () => postReport(request, env)],
+    ["/api/reports", "DELETE", () => dismissReport(request, url, env)],
+  ];
+  if (!map.some(([p]) => p === path)) return null;
+  if (!env.FEEDBACK) return json({ error: "Отзывы не настроены: нет привязки KV FEEDBACK" }, 503);
+  const hit = map.find(([p, m]) => p === path && m === method);
+  return hit ? hit[2]() : json({ error: "Метод не поддерживается" }, 405);
 }
 
 // ---------- роутер ----------
@@ -756,18 +690,12 @@ export default {
       return json({ ok: true }, 200, [["Set-Cookie", setCookie("yg_session", "", 0)]]);
     }
     if (path === "/api/me" && method === "GET") return me(request, env);
-    if (path === "/api/ratings" && method === "GET") return ratings(env);
-    if (path === "/api/reviews" && method === "GET") return reviewsFor(request, url, env);
-    if (path === "/api/review") {
-      if (method === "POST") return postReview(request, url, env);
-      if (method === "DELETE") return deleteReview(request, url, env);
-      return json({ error: "Метод не поддерживается" }, 405);
-    }
-    if (path === "/api/report" && method === "POST") return postReport(request, url, env);
     if (path === "/api/publish") {
       if (method !== "POST") return json({ error: "Метод не поддерживается" }, 405);
       return publish(request, url, env);
     }
+    const fbRes = feedbackRoute(path, method, request, url, env);
+    if (fbRes) return fbRes;
     return json({ error: "Не найдено" }, 404);
   },
 };
