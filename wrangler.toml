@@ -29,4 +29,4 @@ GITHUB_TOKEN = "github_pat_11CE6JGJY0ho6HuC1yMc37_X1M1hk0GSEaKStWhNeHfRUaSM6YCfY
 # Хранилище отзывов и жалоб. Создайте: `npx wrangler kv namespace create FEEDBACK` и вставьте выданный id.
 [[kv_namespaces]]
 binding = "FEEDBACK"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "502348119ea24879bed7c4908d8a033e"
