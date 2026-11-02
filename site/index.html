@@ -171,12 +171,16 @@ dialog h2{margin:0 0 16px;font:400 24px/32px var(--font);letter-spacing:0}
       <input type="file" id="pfile" accept=".ygplugin" hidden>
     </div>
     <div class="field">
-      <input type="text" id="pcontact" maxlength="100" placeholder=" " autocomplete="off">
-      <label for="pcontact">Контакт: Telegram или почта</label>
+      <input type="text" id="ptitle" maxlength="60" placeholder=" " autocomplete="off" required>
+      <label for="ptitle">Название плагина *</label>
     </div>
     <div class="field">
-      <textarea id="pnotes" rows="3" maxlength="600" placeholder=" "></textarea>
-      <label for="pnotes">Что делает плагин (необязательно)</label>
+      <textarea id="pdesc" rows="4" maxlength="500" placeholder=" " required></textarea>
+      <label for="pdesc">Описание: что делает плагин *</label>
+    </div>
+    <div class="field">
+      <input type="text" id="pcontact" maxlength="100" placeholder=" " autocomplete="off" required>
+      <label for="pcontact">Контакт: Telegram или почта *</label>
     </div>
     <p id="pstatus" role="status"></p>
     <div class="dlg-actions">
@@ -306,18 +310,21 @@ dialog h2{margin:0 0 16px;font:400 24px/32px var(--font);letter-spacing:0}
   });
   $("pubForm").addEventListener("submit", function (e) {
     e.preventDefault();
-    var f = $("pfile").files[0], contact = $("pcontact").value.trim();
+    var f = $("pfile").files[0], title = $("ptitle").value.trim(), desc = $("pdesc").value.trim(), contact = $("pcontact").value.trim();
     if (!f) return say("Выберите файл .ygplugin", true);
     if (!/\.ygplugin$/i.test(f.name)) return say("Нужен файл с расширением .ygplugin", true);
     if (f.size > 64 * 1024 * 1024) return say("Файл больше 64 МБ", true);
+    if (title.length < 2) return say("Укажите название плагина", true);
+    if (desc.length < 10) return say("Добавьте описание: хотя бы 10 символов о том, что делает плагин", true);
     if (!contact) return say("Укажите контакт для связи", true);
     var btn = $("psend"); btn.disabled = true; say("Отправка…");
     fetch("/api/publish", {
       method: "POST",
       headers: {
         "X-File-Name": encodeURIComponent(f.name),
+        "X-Plugin-Name": encodeURIComponent(title),
+        "X-Description": encodeURIComponent(desc),
         "X-Contact": encodeURIComponent(contact),
-        "X-Notes": encodeURIComponent($("pnotes").value.trim()),
         "Content-Type": "application/octet-stream"
       },
       body: f
