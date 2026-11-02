@@ -8,7 +8,7 @@ import json, os, struct, sys, zipfile
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
 import vector_icon
 
-MIN_API, MAX_API = (2, 1), (2, 3)  # как в приложении: PluginApiVersion (MIN_MINOR..MINOR). Поднимай MAX_API вместе с приложением.
+MIN_API = (2, 1)  # минимальная версия из приложения (PluginApiVersion.MIN_MINOR). Верхней границы нет: 2.3 и всё новее принимается.
 
 
 def api_ok(v):
@@ -16,7 +16,7 @@ def api_ok(v):
         ma, mi = (int(x) for x in str(v).split("."))
     except ValueError:
         return False
-    return MIN_API <= (ma, mi) <= MAX_API and ma == 2
+    return (ma, mi) >= MIN_API
 
 src = os.path.abspath(sys.argv[1])
 out = sys.argv[2] if len(sys.argv) > 2 else os.path.basename(src) + ".ygplugin"
@@ -24,7 +24,7 @@ out = sys.argv[2] if len(sys.argv) > 2 else os.path.basename(src) + ".ygplugin"
 mf = os.path.join(src, "manifest.json")
 assert os.path.isfile(mf), "нет manifest.json в корне"
 m = json.load(open(mf, encoding="utf-8"))
-assert api_ok(m.get("api")), f'manifest.json: "api" должен быть от 2.1 до 2.3 (сейчас: {m.get("api")!r}). Плагины старее 2.1 приложение не установит'
+assert api_ok(m.get("api")), f'manifest.json: "api" должен быть 2.1 или новее, формата "MAJOR.MINOR" (сейчас: {m.get("api")!r}). Плагины старее 2.1 приложение не установит'
 
 icon = m.get("icon")
 if not icon:

@@ -286,7 +286,10 @@ async function readManifest(buf) {
   if (!ID_RE.test(String(m.id || ""))) throw new Error("В manifest.json недопустимый id");
   if (!VER_RE.test(String(m.version || ""))) throw new Error("В manifest.json недопустимая version");
   if (typeof m.name !== "string" || !m.name.trim() || m.name.length > 120) throw new Error("В manifest.json недопустимое name");
-  if (!/^2\.[123]$/.test(String(m.api))) throw new Error(`API ${JSON.stringify(m.api)} не поддерживается (нужно от 2.1 до 2.3)`);
+  {
+    const mm = /^(\d{1,3})\.(\d{1,3})$/.exec(String(m.api));
+    if (!mm || +mm[1] < 2 || (+mm[1] === 2 && +mm[2] < 1)) throw new Error(`API ${JSON.stringify(m.api)} не поддерживается (нужен формат MAJOR.MINOR, 2.1 или новее)`);
+  }
   const entry = String(m.entry || "libplugin.so");
   const esc = entry.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   if (!names.some((n) => new RegExp(`^lib/[^/]+/${esc}$`).test(n))) throw new Error(`В пакете нет lib/<abi>/${entry}`);
