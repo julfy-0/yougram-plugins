@@ -30,7 +30,7 @@
       "api": "2.2",
       "description": "Авто-исправление раскладки (~ghbdtn), быстрые шаблоны, калькулятор (= 2+2) и кнопка «В Избранное» в меню.",
       "long_description": "Инструмент для чатов\nКак он работает:\nЕсли вам лень писать одно и тоже предложение можете не не писать, просто один раз вписать в шаблоны и напишите например .ок и команда сразу превращается в предложение",
-      "category": "Утилиты",
+      "category": "интрумент для чатов",
       "url": "https://github.com/julfy-0/yougram-plugins/releases/download/submission-mvzeygr4-eae591a9/com.yougram.chattools-2.2.0.ygplugin",
       "sha256": "7c71179480cdf90a3454f60ce1ff7fc982a440eff84f97c89886d2782eabc440",
       "size": 6202,
@@ -44,6 +44,28 @@
       "added": 1793633304,
       "developer": "ex1t44",
       "verified": true
+    },
+    {
+      "id": "com.example.dice",
+      "name": "Dice & Coin",
+      "author": "Your Name",
+      "version": "1.0.0",
+      "api": "2.3",
+      "description": "Тестовый плагин: команды /roll (кубики, напр. 2d6) и /coin (монетка).",
+      "long_description": "Тестовый плагин: команды /roll (кубики, напр. 2d6) и /coin (монетка).",
+      "category": "Утилиты",
+      "url": "https://github.com/julfy-0/yougram-plugins/releases/download/submission-mvztnhab-8007a129/com.example.dice-1.0.0.ygplugin",
+      "sha256": "2df3fad6a36bbaf1a9a26a5e4350119b7e969c5e2fb9622a40c2eaf1bc796374",
+      "size": 40803,
+      "changelog": "",
+      "permissions": [
+        "hooks",
+        "chat.send"
+      ],
+      "added": 1793657985,
+      "developer": "julfy-0",
+      "verified": true,
+      "icon": "icons/com.example.dice.svg"
     },
     {
       "id": "com.yougram.fakelink",
