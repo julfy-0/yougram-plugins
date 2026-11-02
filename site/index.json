@@ -1,3 +1,23 @@
 {
-  "plugins": []
+  "plugins": [
+    {
+      "id": "com.yougram.fakelink",
+      "name": "FakeLink Radar 2.2",
+      "author": "Custom",
+      "version": "2.2.0",
+      "api": "2.2",
+      "description": "Разоблачает подмену ссылок и кирилические символы в домене",
+      "long_description": "Разоблачает подмену ссылок и кирилические символы в домене",
+      "category": "Безопасность",
+      "url": "https://github.com/julfy-0/yougram-plugins/releases/download/submission-mvzcqzqr-a5a7ad44/com.yougram.fakelink-2.2.0.ygplugin",
+      "sha256": "2c3b0e754435c5e9c5e1d4c92321281aa6ef8a31cae0686eb39a8ebfa78f2b6e",
+      "size": 3776,
+      "changelog": "",
+      "permissions": [
+        "chat.read",
+        "ui"
+      ],
+      "added": 1793629596
+    }
+  ]
 }
