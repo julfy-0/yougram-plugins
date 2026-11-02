@@ -24,7 +24,7 @@ API = os.environ.get("API_BASE", "https://api.github.com")
 ALLOW_HTTP = os.environ.get("ALLOW_HTTP") == "1"
 SITE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "site")
 
-MIN_API, MAX_API = (2, 1), (2, 3)  # как в приложении (PluginApiVersion). Поднимай MAX_API вместе с приложением.
+MIN_API = (2, 1)  # как в приложении (PluginApiVersion.MIN_MINOR). Верхней границы нет: 2.3 и всё новее принимается.
 ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,119}")
 VER_RE = re.compile(r"[A-Za-z0-9._-]{1,40}")
 MAX_PKG = 64 * 1024 * 1024      # лимит клиента
@@ -76,7 +76,7 @@ def api_ok(v):
         a, b = (int(x) for x in str(v).split("."))
     except ValueError:
         return False
-    return a == 2 and MIN_API <= (a, b) <= MAX_API
+    return (a, b) >= MIN_API
 
 
 def vkey(v):
@@ -110,7 +110,7 @@ def read_package(data):
     if not str(m.get("name", "")).strip() or len(m["name"]) > 120:
         raise ValueError("недопустимое имя")
     if not api_ok(m.get("api")):
-        raise ValueError(f'API {m.get("api")!r} не поддерживается (нужно от 2.1 до 2.3)')
+        raise ValueError(f'API {m.get("api")!r} не поддерживается (нужен формат MAJOR.MINOR, 2.1 или новее)')
     entry = str(m.get("entry", "libplugin.so"))
     if not any(re.fullmatch(rf"lib/[^/]+/{re.escape(entry)}", n) for n in names):
         raise ValueError(f"в пакете нет lib/<abi>/{entry}")

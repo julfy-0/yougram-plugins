@@ -11,7 +11,7 @@ Release + файл .ygplugin ─► GitHub Action (tools/build_index.py) ─► 
 ```
 
 ## Выпуск плагина
-1. В `manifest.json`: `"api": "2.3"` (или 2.1, 2.2), `"icon": "icon.png"`, поднятая `version`.
+1. В `manifest.json`: `"api": "2.3"` (или любая более новая версия, минимум 2.1), `"icon": "icon.png"`, поднятая `version`.
    Необязательно: `"category"`, `"long_description"` (каталог их подхватит).
 2. `python pack.py <папка_плагина> <id>-<version>.ygplugin`
 3. GitHub → Releases → Draft a new release → тег (любой, например `hello-2.1.0`) →
@@ -22,7 +22,7 @@ Release + файл .ygplugin ─► GitHub Action (tools/build_index.py) ─► 
 Удалил релиз — плагин пропал из каталога после пересборки.
 
 ## Что проверяет сборщик (остальное пропускается с предупреждением в Actions)
-manifest.json в корне; корректные id и version; API 2.1–2.3; есть `lib/<abi>/<entry>`;
+manifest.json в корне; корректные id и version; API 2.1 и новее (верхней границы нет, формат MAJOR.MINOR); есть `lib/<abi>/<entry>`;
 не больше 200 файлов; нет `..` и абсолютных путей; иконка png/webp/jpg до 512 КБ;
 sha256 считается по скачанному файлу и сверяется с данными GitHub; пакет до 64 МБ.
 Сбой сети при скачивании останавливает сборку, каталог при этом не затирается.
