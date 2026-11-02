@@ -31,6 +31,16 @@ SUBMIT_RE = re.compile(r"<!--\s*yg-submit:(\{.*?\})\s*-->", re.S)
 MAGIC = {".png": b"\x89PNG\r\n\x1a\n", ".jpg": b"\xff\xd8\xff", ".jpeg": b"\xff\xd8\xff", ".webp": b"RIFF"}
 
 
+def load_cfg(name):
+    """Список логинов из [vars] wrangler.toml (TRUSTED, ADMINS): единый источник доверия для воркера и каталога."""
+    try:
+        with open(os.path.join(os.path.dirname(SITE), "wrangler.toml"), encoding="utf-8") as f:
+            m = re.search(rf'^{name}\s*=\s*"([^"]*)"', f.read(), re.M)
+    except OSError:
+        return set()
+    return {x.strip().lower() for x in (m.group(1) if m else "").split(",") if x.strip()}
+
+
 def warn(msg):
     print(f"::warning::{msg}")
 
@@ -194,6 +204,7 @@ def main():
         if owner:
             owners[pid] = {"id": owner["uid"], "login": owner["login"]}
 
+    trusted = load_cfg("TRUSTED") | load_cfg("ADMINS")
     entries, keep_icons = [], set()
     os.makedirs(f"{SITE}/icons", exist_ok=True)
     for pid, lst in cands.items():
@@ -219,6 +230,9 @@ def main():
             "changelog": c["changelog"],
             "permissions": m.get("permissions", []),
             "added": first_seen[pid],
+            # Кто выложил (GitHub-логин владельца; релиз без метки — мейнтейнер репозитория) и доверенный ли он.
+            "developer": owners[pid]["login"] if pid in owners else REPO.split("/")[0],
+            "verified": pid not in owners or owners[pid]["login"].lower() in trusted,
         }
         if c["icon"]:
             rel_path = f"icons/{pid}{c['ext']}"

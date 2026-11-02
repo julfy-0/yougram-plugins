@@ -6,6 +6,12 @@
 //   POST /api/auth/logout    -> выход
 //   GET  /api/me             -> {user, admin, owned: [id плагинов, которые можно обновлять]}
 //   POST /api/publish        -> новый плагин или обновление; файл уходит ЧЕРНОВИКОМ релиза в GitHub
+//   GET  /api/ratings       -> {ratings: {id плагина: {avg, count}}}
+//   GET  /api/reviews?plugin=ID -> отзывы плагина + можно ли оставить свой
+//   POST /api/review        -> {plugin, rating 1-5, text}: свой отзыв (один на плагин, повторный = обновление)
+//   DELETE /api/review?plugin=ID[&login=x] -> удалить свой отзыв (админ: чужой)
+//   POST /api/report        -> {plugin, reason, text}: жалоба на плагин
+// Отзывы и жалобы хранятся как issues в REPO с метками yg-review и yg-report (токену нужно право Issues: Read and write).
 // Всё остальное отдаёт статика из site/ (binding ASSETS).
 //
 // Секреты/переменные (Cloudflare -> Settings -> Variables and Secrets, в репозиторий не класть):
@@ -492,6 +498,247 @@ async function publish(request, url, env) {
   return json({ ok: true, kind, id: m.id, name: marker.name || m.name, version: m.version, published, reason });
 }
 
+// ---------- отзывы и жалобы: хранятся как issues в REPO (метки yg-review, yg-report) ----------
+// Метки ставит только этот воркер (обычные пользователи не могут), поэтому доверяем меткам в теле issue.
+// Убрать отзыв: закрыть issue на GitHub. Жалобы приходят владельцу репозитория обычным уведомлением об issue.
+
+const REVIEW_LABEL = "yg-review";
+const REPORT_LABEL = "yg-report";
+const REVIEW_RE = /<!--\s*yg-review:(\{.*?\})\s*-->/s;
+const REPORT_RE = /<!--\s*yg-report:(\{.*?\})\s*-->/s;
+const REASONS = {
+  malware: "Вредоносное поведение",
+  fake: "Обман или подделка",
+  broken: "Не работает или ломает приложение",
+  copyright: "Нарушение прав",
+  other: "Другое",
+};
+
+const ghAuth = (env) => ({
+  Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+  Accept: "application/vnd.github+json",
+  "User-Agent": UA,
+  "X-GitHub-Api-Version": "2022-11-28",
+});
+
+// Открытые issues с меткой; из тела берём JSON-метку (uid, plugin, ...) и текст после неё.
+async function listIssues(env, label, re) {
+  const out = [];
+  for (let page = 1; page <= 5; page++) {
+    const r = await fetch(
+      `https://api.github.com/repos/${env.REPO}/issues?labels=${label}&state=open&per_page=100&page=${page}`,
+      { headers: ghAuth(env) },
+    ).catch(() => null);
+    if (!r || !r.ok) return page === 1 ? null : out;
+    const rows = await r.json().catch(() => []);
+    for (const it of rows) {
+      if (it.pull_request) continue;
+      const body = it.body || "";
+      const m = re.exec(body);
+      if (!m) continue;
+      let meta;
+      try {
+        meta = JSON.parse(m[1]);
+      } catch {
+        continue;
+      }
+      if (!meta || !Number.isInteger(meta.uid) || typeof meta.plugin !== "string") continue;
+      out.push({
+        n: it.number,
+        meta,
+        text: body.slice(m.index + m[0].length).trim(),
+        ts: Math.floor(Date.parse(it.updated_at || it.created_at) / 1000) || 0,
+      });
+    }
+    if (rows.length < 100) break;
+  }
+  return out;
+}
+
+// Кэш отзывов на 30 с в памяти воркера, чтобы не упираться в лимит GitHub API (общий с публикацией плагинов).
+let reviewCache = { t: 0, v: null };
+async function allReviews(env, fresh) {
+  const age = Date.now() - reviewCache.t;
+  if (reviewCache.v && (fresh ? age < 5000 : age < 30000)) return reviewCache.v;
+  const v = await listIssues(env, REVIEW_LABEL, REVIEW_RE);
+  if (v) reviewCache = { t: Date.now(), v };
+  return v || reviewCache.v;
+}
+
+const validRating = (r) => Number.isInteger(r) && r >= 1 && r <= 5;
+
+function summarize(rows) {
+  const acc = {};
+  for (const r of rows) {
+    if (!validRating(r.meta.rating)) continue;
+    const x = acc[r.meta.plugin] || (acc[r.meta.plugin] = { sum: 0, count: 0 });
+    x.sum += r.meta.rating;
+    x.count++;
+  }
+  const out = {};
+  for (const id of Object.keys(acc)) out[id] = { avg: Math.round((acc[id].sum / acc[id].count) * 10) / 10, count: acc[id].count };
+  return out;
+}
+
+async function readJson(request) {
+  const len = Number(request.headers.get("content-length"));
+  if (!Number.isFinite(len) || len < 2 || len > 8192) return null;
+  try {
+    const v = await request.json();
+    return v && typeof v === "object" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+// Общие проверки для записи: вход, бан, CSRF, настройки.
+async function writeGuard(request, url, env) {
+  const user = await readSession(request, env);
+  if (!user) return { res: json({ error: "Войдите через GitHub", login: true }, 401) };
+  if (list(env.BANNED).includes(user.login.toLowerCase())) return { res: json({ error: "Для этого аккаунта действие закрыто" }, 403) };
+  const origin = request.headers.get("origin");
+  if (origin && origin !== url.origin) return { res: json({ error: "Запрос с чужого сайта" }, 403) };
+  if (!env.GITHUB_TOKEN || !env.REPO) return { res: json({ error: "Сервер не настроен" }, 500) };
+  return { user };
+}
+
+const markerJson = (o) => JSON.stringify(o).replace(/>/g, "\\u003e").replace(/</g, "\\u003c");
+
+async function ratings(env) {
+  if (!env.GITHUB_TOKEN || !env.REPO) return json({ ratings: {} });
+  const rows = await allReviews(env, false);
+  return json({ ratings: rows ? summarize(rows) : {} });
+}
+
+async function reviewsFor(request, url, env) {
+  const id = url.searchParams.get("plugin") || "";
+  if (!ID_RE.test(id)) return json({ error: "Некорректный плагин" }, 400);
+  if (!env.GITHUB_TOKEN || !env.REPO) return json({ error: "Сервер не настроен" }, 500);
+  const user = await readSession(request, env);
+  const rows = await allReviews(env, Boolean(user) && url.searchParams.get("fresh") === "1");
+  if (!rows) return json({ error: "Отзывы сейчас недоступны, попробуйте позже" }, 503);
+  const mine = (r) => Boolean(user) && r.meta.uid === user.uid;
+  const reviews = rows
+    .filter((r) => r.meta.plugin === id && validRating(r.meta.rating))
+    .sort((a, b) => b.ts - a.ts)
+    .slice(0, 100)
+    .map((r) => ({
+      login: String(r.meta.login || "").replace(/[^A-Za-z0-9-]/g, "").slice(0, 39),
+      rating: r.meta.rating,
+      text: r.text.slice(0, 600),
+      ts: r.ts,
+      mine: mine(r),
+    }));
+  const { owners } = await catalog(env, request);
+  const isOwner = Boolean(user) && Boolean(owners[id]) && owners[id].id === user.uid;
+  return json({
+    summary: summarize(rows)[id] || { avg: 0, count: 0 },
+    reviews,
+    signedIn: Boolean(user),
+    canReview: Boolean(user) && !isOwner,
+    admin: Boolean(user) && isAdmin(env, user),
+  });
+}
+
+async function postReview(request, url, env) {
+  const g = await writeGuard(request, url, env);
+  if (g.res) return g.res;
+  const user = g.user;
+  const b = await readJson(request);
+  if (!b) return json({ error: "Некорректный запрос" }, 400);
+  const id = cleanLine(b.plugin, 120);
+  const rating = Number(b.rating);
+  const text = cleanText(b.text, 500);
+  if (!validRating(rating)) return json({ error: "Поставьте оценку от 1 до 5" }, 400);
+
+  const { plugins, owners } = await catalog(env, request);
+  const plugin = plugins && plugins.find((p) => p.id === id);
+  if (!plugin) return json({ error: "Такого плагина нет в каталоге" }, 404);
+  if (owners[id] && owners[id].id === user.uid) return json({ error: "Нельзя оценивать свой плагин" }, 403);
+
+  const rows = await allReviews(env, true);
+  if (!rows) return json({ error: "Отзывы сейчас недоступны, попробуйте позже" }, 503);
+  const prev = rows.find((r) => r.meta.plugin === id && r.meta.uid === user.uid);
+
+  const title = `Отзыв: ${cleanLine(plugin.name, 60)} ${"★".repeat(rating)} (@${user.login})`;
+  const body = `<!-- yg-review:${markerJson({ uid: user.uid, login: user.login, plugin: id, rating })} -->\n${text}`;
+  const res = prev
+    ? await fetch(`https://api.github.com/repos/${env.REPO}/issues/${prev.n}`, {
+        method: "PATCH",
+        headers: { ...ghAuth(env), "Content-Type": "application/json" },
+        body: JSON.stringify({ title, body }),
+      })
+    : await fetch(`https://api.github.com/repos/${env.REPO}/issues`, {
+        method: "POST",
+        headers: { ...ghAuth(env), "Content-Type": "application/json" },
+        body: JSON.stringify({ title, body, labels: [REVIEW_LABEL] }),
+      });
+  if (!res.ok) return json({ error: "Не удалось сохранить отзыв" }, 502);
+  reviewCache = { t: 0, v: null };
+  return json({ ok: true, updated: Boolean(prev) });
+}
+
+async function deleteReview(request, url, env) {
+  const g = await writeGuard(request, url, env);
+  if (g.res) return g.res;
+  const user = g.user;
+  const id = url.searchParams.get("plugin") || "";
+  const target = (url.searchParams.get("login") || "").toLowerCase();
+  if (!ID_RE.test(id)) return json({ error: "Некорректный плагин" }, 400);
+  const rows = await allReviews(env, true);
+  if (!rows) return json({ error: "Отзывы сейчас недоступны, попробуйте позже" }, 503);
+  const admin = isAdmin(env, user);
+  const row = rows.find(
+    (r) => r.meta.plugin === id && (admin && target ? String(r.meta.login || "").toLowerCase() === target : r.meta.uid === user.uid),
+  );
+  if (!row) return json({ error: "Отзыв не найден" }, 404);
+  const res = await fetch(`https://api.github.com/repos/${env.REPO}/issues/${row.n}`, {
+    method: "PATCH",
+    headers: { ...ghAuth(env), "Content-Type": "application/json" },
+    body: JSON.stringify({ state: "closed", state_reason: "not_planned" }),
+  });
+  if (!res.ok) return json({ error: "Не удалось удалить отзыв" }, 502);
+  reviewCache = { t: 0, v: null };
+  return json({ ok: true });
+}
+
+async function postReport(request, url, env) {
+  const g = await writeGuard(request, url, env);
+  if (g.res) return g.res;
+  const user = g.user;
+  const b = await readJson(request);
+  if (!b) return json({ error: "Некорректный запрос" }, 400);
+  const id = cleanLine(b.plugin, 120);
+  const reason = String(b.reason || "");
+  const text = cleanText(b.text, 500);
+  if (!Object.prototype.hasOwnProperty.call(REASONS, reason)) return json({ error: "Выберите причину жалобы" }, 400);
+  if (text.length < 10) return json({ error: "Опишите, что не так (минимум 10 символов)" }, 400);
+
+  const { plugins, owners } = await catalog(env, request);
+  const plugin = plugins && plugins.find((p) => p.id === id);
+  if (!plugin) return json({ error: "Такого плагина нет в каталоге" }, 404);
+  if (owners[id] && owners[id].id === user.uid) return json({ error: "Нельзя жаловаться на свой плагин" }, 403);
+
+  const open = await listIssues(env, REPORT_LABEL, REPORT_RE);
+  if (!open) return json({ error: "Не удалось отправить жалобу, попробуйте позже" }, 503);
+  if (open.some((r) => r.meta.plugin === id && r.meta.uid === user.uid)) {
+    return json({ error: "Вы уже отправили жалобу на этот плагин, мы её рассмотрим" }, 409);
+  }
+
+  const version = cleanLine(plugin.version, 40);
+  const title = `Жалоба: ${cleanLine(plugin.name, 60)}, ${REASONS[reason].toLowerCase()} (@${user.login})`;
+  const body =
+    `<!-- yg-report:${markerJson({ uid: user.uid, login: user.login, plugin: id, reason, version })} -->\n` +
+    `Плагин: ${id} v${version}\nПричина: ${REASONS[reason]}\n\n${text}`;
+  const res = await fetch(`https://api.github.com/repos/${env.REPO}/issues`, {
+    method: "POST",
+    headers: { ...ghAuth(env), "Content-Type": "application/json" },
+    body: JSON.stringify({ title, body, labels: [REPORT_LABEL] }),
+  });
+  if (!res.ok) return json({ error: "Не удалось отправить жалобу" }, 502);
+  return json({ ok: true });
+}
+
 // ---------- роутер ----------
 
 export default {
@@ -509,6 +756,14 @@ export default {
       return json({ ok: true }, 200, [["Set-Cookie", setCookie("yg_session", "", 0)]]);
     }
     if (path === "/api/me" && method === "GET") return me(request, env);
+    if (path === "/api/ratings" && method === "GET") return ratings(env);
+    if (path === "/api/reviews" && method === "GET") return reviewsFor(request, url, env);
+    if (path === "/api/review") {
+      if (method === "POST") return postReview(request, url, env);
+      if (method === "DELETE") return deleteReview(request, url, env);
+      return json({ error: "Метод не поддерживается" }, 405);
+    }
+    if (path === "/api/report" && method === "POST") return postReport(request, url, env);
     if (path === "/api/publish") {
       if (method !== "POST") return json({ error: "Метод не поддерживается" }, 405);
       return publish(request, url, env);
