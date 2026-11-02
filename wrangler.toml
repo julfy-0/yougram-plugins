@@ -19,10 +19,7 @@ MIN_ACCOUNT_DAYS = "7"
 # Логины через запятую, которым публикация закрыта
 BANNED = ""
 # Client ID из GitHub -> Settings -> Developer settings -> OAuth Apps (не секрет)
-<<<<<<< Updated upstream
 name = "yougram-plugins"
-=======
->>>>>>> Stashed changes
 GH_CLIENT_ID = "Ov23libz09WBm1v8rKTg"
 
 # Секреты задаются командой `npx wrangler secret put <ИМЯ>` или в панели Cloudflare:
