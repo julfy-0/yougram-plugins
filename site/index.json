@@ -17,7 +17,31 @@
         "chat.read",
         "ui"
       ],
-      "added": 1793629596
+      "added": 1793629596,
+      "developer": "julfy-0",
+      "verified": true
+    },
+    {
+      "id": "com.yougram.example.hello",
+      "name": "HelloWorld",
+      "author": "Yougram Example",
+      "version": "2.2.0",
+      "api": "2.2",
+      "description": "деволт плагин юграма",
+      "long_description": "деволт плагин юграма",
+      "category": "Оформление",
+      "url": "https://github.com/julfy-0/yougram-plugins/releases/download/submission-mvzefodw-3b9f821b/com.yougram.example.hello-2.2.0.ygplugin",
+      "sha256": "17e778ae4e0f0fdcd032e0a6bfbce87433feacc47e4c61ca5ad9f7eec162dd6d",
+      "size": 14947,
+      "changelog": "",
+      "permissions": [
+        "chat.send",
+        "hooks"
+      ],
+      "added": 1793632427,
+      "developer": "julfy-0",
+      "verified": true,
+      "icon": "icons/com.yougram.example.hello.png"
     }
   ]
 }
