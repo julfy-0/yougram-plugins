@@ -279,6 +279,30 @@
       "icon": "icons/com.yougram.autoresponder.svg"
     },
     {
+      "id": "com.yougram.smartcalc",
+      "name": "Smart Calculator & Estimator",
+      "author": "Yougram Community",
+      "version": "2.3.1",
+      "api": "2.3",
+      "description": "Умный калькулятор выражений и конструктор сметы стоимости услуг для клиентов прямо в чате",
+      "long_description": ".calc <выражение> — расчёт математических выражений (например, .calc 15000 + (3 * 2500) * 0.9).\n=<выражение> — быстрый инлайн-калькулятор прямо перед отправкой (например, =1200*4 автоматически заменится на 4800).\n.смета <тип> [опции] — готовый генератор коммерческих предложений для клиентов (например,.смета лендинг дизайн срочно).",
+      "category": "Утилиты",
+      "url": "https://github.com/julfy-0/yougram-plugins/releases/download/submission-mvzze57v-6c54eac3/com.yougram.smartcalc-2.3.1.ygplugin",
+      "sha256": "aa456bf04fc9d9f9b5326f79842a3580176d03ac26daccfbd8feb93b94515cd4",
+      "size": 10803,
+      "changelog": "",
+      "permissions": [
+        "chat.read",
+        "chat.send",
+        "hooks",
+        "ui"
+      ],
+      "added": 1793667627,
+      "developer": "ex1t44",
+      "verified": true,
+      "icon": "icons/com.yougram.smartcalc.svg"
+    },
+    {
       "id": "com.yougram.smartremind",
       "name": "SmartRemind Pro (Мгновенные Заметки)",
       "author": "Custom",
