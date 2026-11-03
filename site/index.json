@@ -208,6 +208,30 @@
       "icon": "icons/com.yougram.msgtracker.svg"
     },
     {
+      "id": "com.yougram.readtimetoc",
+      "name": "ReadTime & Table of Contents",
+      "author": "Yougram Community",
+      "version": "2.3.1",
+      "api": "2.3",
+      "description": "Автогенерация оглавления по структуре текста и точный расчет времени чтения постов",
+      "long_description": ".readtime или .время — считает количество слов, символов и точное время чтения в минутах.\n.toc или .оглавление — сканирует заголовки (#, ##, 1., •) и генерирует кликабельное структурированное содержание статьи.",
+      "category": "Продуктивность и задачи",
+      "url": "https://github.com/julfy-0/yougram-plugins/releases/download/submission-mvzzbh9f-7d527b1c/com.yougram.readtimetoc-2.3.1.ygplugin",
+      "sha256": "57c99e3b02c25e8199d234f037aecc72461e69ed58e685a00183595ed287c5a7",
+      "size": 8549,
+      "changelog": "",
+      "permissions": [
+        "chat.read",
+        "chat.send",
+        "hooks",
+        "ui"
+      ],
+      "added": 1793667503,
+      "developer": "ex1t44",
+      "verified": true,
+      "icon": "icons/com.yougram.readtimetoc.svg"
+    },
+    {
       "id": "com.yougram.safeguard",
       "name": "SafeGuard Pro",
       "author": "Custom",
