@@ -145,15 +145,15 @@
       "id": "com.yougram.discord.sounds",
       "name": "DiscordSounds Pro",
       "author": "Custom",
-      "version": "2.3.3",
+      "version": "2.3.4",
       "api": "2.3",
       "description": "Прямое воспроизведение звуков Discord через OpenSL ES. Команды: .ds test, .ds on, .ds off.",
       "long_description": "Прямое воспроизведение звуков Discord через OpenSL ES. Команды: .ds test, .ds on, .ds off.",
       "category": "Звуки",
-      "url": "https://github.com/julfy-0/yougram-plugins/releases/download/submission-mw0y7e0n-c9d90a3d/com.yougram.discord.sounds-2.3.3.ygplugin",
-      "sha256": "9866ac1345e1e242259c919a606d70f5eaf84f8c82f58e48babf614da82ae553",
-      "size": 11598,
-      "changelog": "Теперь добавлен черный список и теперь все команды находяться в настройках",
+      "url": "https://github.com/julfy-0/yougram-plugins/releases/download/submission-mw0zkohm-07bb01cd/com.yougram.discord.sounds-2.3.4.ygplugin",
+      "sha256": "06230dbe7e6f479bb50b9f69e1b37d268e453d9a031f8e0f7046a9b5e654e61d",
+      "size": 9519,
+      "changelog": "обновлена иконка",
       "permissions": [
         "chat.read",
         "chat.send",
@@ -164,7 +164,7 @@
       "added": 1793695073,
       "developer": "ex1t44",
       "verified": true,
-      "icon": "icons/com.yougram.discord.sounds.png"
+      "icon": "icons/com.yougram.discord.sounds.svg"
     },
     {
       "id": "com.yougram.fakelink",
