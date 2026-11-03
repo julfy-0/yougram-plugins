@@ -163,6 +163,30 @@
       "verified": true
     },
     {
+      "id": "com.yougram.habittracker",
+      "name": "Habit Tracker",
+      "author": "Yougram Community",
+      "version": "2.3.1",
+      "api": "2.3",
+      "description": "Трекер полезных привычек прямо в Telegram: ежедневные чек-листы, стрики выполнения и статистика",
+      "long_description": "привычка или .habits — показать список ваших привычек со статусом на сегодня (✅/⬜) и числом дней непрерывного выполнения (стрик 🔥).\n.привычка + <название> — добавить новую привычку (например, .привычка + Чтение 20 мин).\n.привычка чек <номер> — отметить выполнение сегодня (увеличивает стрик).\n.привычка удалить <номер> — удалить привычку.\n.привычка сброс — полностью очистить трекер.",
+      "category": "Продуктивность и задачи",
+      "url": "https://github.com/julfy-0/yougram-plugins/releases/download/submission-mvzzg2x7-2529a309/com.yougram.habittracker-2.3.1.ygplugin",
+      "sha256": "b9f43a6c73b92c3b9aa7bdb1aef210a7a3873d563d044bc7ef05fc61234d5b30",
+      "size": 10326,
+      "changelog": "",
+      "permissions": [
+        "chat.read",
+        "chat.send",
+        "hooks",
+        "ui"
+      ],
+      "added": 1793667717,
+      "developer": "ex1t44",
+      "verified": true,
+      "icon": "icons/com.yougram.habittracker.svg"
+    },
+    {
       "id": "com.yougram.example.hello",
       "name": "HelloWorld",
       "author": "Yougram Example",
