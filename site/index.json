@@ -47,6 +47,31 @@
       "icon": "icons/com.yougram.automute.svg"
     },
     {
+      "id": "com.yougram.chatstats",
+      "name": "Chat Stats Pro",
+      "author": "Antigravity",
+      "version": "2.3.1",
+      "api": "2.3",
+      "description": "Статистика общения: топ собеседников, активность по времени суток и мягкие напоминания",
+      "long_description": "еще в разработке",
+      "category": "Утилиты",
+      "url": "https://github.com/julfy-0/yougram-plugins/releases/download/submission-mvzz7rz9-67897d7f/com.yougram.chatstats-2.3.1.ygplugin",
+      "sha256": "8c787ad50ee63c11320e53b50138403d4d331155f8a474e47abb427cccfcaf24",
+      "size": 2410,
+      "changelog": "",
+      "permissions": [
+        "chat.read",
+        "chat.send",
+        "chat.modify",
+        "hooks",
+        "ui"
+      ],
+      "added": 1793667330,
+      "developer": "ex1t44",
+      "verified": true,
+      "icon": "icons/com.yougram.chatstats.svg"
+    },
+    {
       "id": "com.yougram.chattools",
       "name": "ChatTools Pro (Макросы и Раскладка)",
       "author": "Custom",
