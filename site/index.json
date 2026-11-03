@@ -111,6 +111,29 @@
       "icon": "icons/com.yougram.example.hello.svg"
     },
     {
+      "id": "com.yougram.msgtracker",
+      "name": "MsgTracker Pro (Anti-Delete)",
+      "author": "Custom",
+      "version": "2.3.0",
+      "api": "2.3",
+      "description": "Ловит удалённые и изменённые сообщения с поддержкой черного списка. Команды: .лог, .игнор, .антигнор, .игнорлист.",
+      "long_description": ".лог-работает как привязка, то есть пишите например в избранные .лог и вам скажут что чат успешно провязан, а значеть все удаленные и измененные сообщения идут туда.\n.игнор-добавляет текущий чат в черный список, плагин полностью перестает слушать сообщений, то есть он не будет отправлять в избранные из этого чата который вы пометили\n.антигнор-удаляет текущий чат из черного списка\n.игнорлист-выводит список всех ID чатов, которые в данный момент находятся в исключениях",
+      "category": "Утилиты",
+      "url": "https://github.com/julfy-0/yougram-plugins/releases/download/submission-mvzx9ncs-6f3f9a33/com.yougram.msgtracker-2.3.0.ygplugin",
+      "sha256": "5828525862404c0b3e31bd96b5978edbb64528ad083258634db48b251c3fd1d7",
+      "size": 7882,
+      "changelog": "",
+      "permissions": [
+        "chat.read",
+        "chat.send",
+        "ui"
+      ],
+      "added": 1793664058,
+      "developer": "ex1t44",
+      "verified": true,
+      "icon": "icons/com.yougram.msgtracker.svg"
+    },
+    {
       "id": "com.yougram.safeguard",
       "name": "SafeGuard Pro",
       "author": "Custom",
