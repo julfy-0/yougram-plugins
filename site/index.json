@@ -71,6 +71,30 @@
       "icon": "icons/com.yougram.chattools.svg"
     },
     {
+      "id": "com.yougram.dailyreview",
+      "name": "Daily Review & Tasks",
+      "author": "Yougram Community",
+      "version": "2.3.1",
+      "api": "2.3",
+      "description": "Ежедневный обзор: список задач, что сделано за день и что осталось выполнить прямо в чате",
+      "long_description": ".daily или .обзор — показать наглядную сводку дня (что сделано и что осталось).\n.todo + <текст> — быстро добавить новую задачу (например, .todo + Купить кофе)..todo чек <номер> — отметить задачу выполненной (она вычёркивается ✅).\n.todo del <номер> — удалить задачу из списка.\n.todo clear — очистить все завершённые задачи.",
+      "category": "Продуктивность и задачи",
+      "url": "https://github.com/julfy-0/yougram-plugins/releases/download/submission-mvzz61q9-6e41736a/com.yougram.dailyreview-2.3.1.ygplugin",
+      "sha256": "e78b64382f1ce70da2c80494ceaa6f3e294b739a3bec2cf4c898969ca0365b3e",
+      "size": 10966,
+      "changelog": "",
+      "permissions": [
+        "chat.read",
+        "chat.send",
+        "hooks",
+        "ui"
+      ],
+      "added": 1793667249,
+      "developer": "ex1t44",
+      "verified": true,
+      "icon": "icons/com.yougram.dailyreview.svg"
+    },
+    {
       "id": "com.example.dice",
       "name": "Dice & Coin",
       "author": "Your Name",
