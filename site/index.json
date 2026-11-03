@@ -142,6 +142,31 @@
       "icon": "icons/com.example.dice.svg"
     },
     {
+      "id": "com.yougram.discord.sounds",
+      "name": "DiscordSounds Pro",
+      "author": "Custom",
+      "version": "2.2.0",
+      "api": "2.2",
+      "description": "Прямое воспроизведение звуков Discord через OpenSL ES. Команды: .ds test, .ds on, .ds off.",
+      "long_description": "Прямое воспроизведение звуков Discord через OpenSL ES. Команды: .ds test, .ds on, .ds off.",
+      "category": "Звуки",
+      "url": "https://github.com/julfy-0/yougram-plugins/releases/download/submission-mw0fqebz-e53e4ea4/com.yougram.discord.sounds-2.2.0.ygplugin",
+      "sha256": "b7fe9157e66040d8899b55fc0c90e9fb4f7c7e851174919900a16c0c4aa478d5",
+      "size": 12423,
+      "changelog": "",
+      "permissions": [
+        "chat.read",
+        "chat.send",
+        "chat.modify",
+        "hooks",
+        "ui"
+      ],
+      "added": 1793695073,
+      "developer": "ex1t44",
+      "verified": true,
+      "icon": "icons/com.yougram.discord.sounds.png"
+    },
+    {
       "id": "com.yougram.fakelink",
       "name": "FakeLink Radar 2.2",
       "author": "Custom",
