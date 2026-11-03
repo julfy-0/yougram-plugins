@@ -23,6 +23,30 @@
       "verified": true
     },
     {
+      "id": "com.yougram.automute",
+      "name": "AutoMute Pro",
+      "author": "Custom",
+      "version": "2.3.1",
+      "api": "2.3",
+      "description": "Автоматически удаляет сообщения от замученных людей. Команды: .mute, .unmute, .mutelist",
+      "long_description": ".mute-добавляешь человека в мут и не вы и не человек не может написать в этот чат\n.unmute- убираешь человека с мута\n.mutelist- смотришь кто находиться в мут листе",
+      "category": "Утилиты",
+      "url": "https://github.com/julfy-0/yougram-plugins/releases/download/submission-mvzyzhap-d72b1561/com.yougram.automute-2.3.1.ygplugin",
+      "sha256": "198e4ede46a844c698cbc4890639cf4a1efdf0762c13ffb3c85794c6916ca648",
+      "size": 5562,
+      "changelog": "",
+      "permissions": [
+        "chat.read",
+        "chat.send",
+        "chat.modify",
+        "ui"
+      ],
+      "added": 1793666943,
+      "developer": "ex1t44",
+      "verified": true,
+      "icon": "icons/com.yougram.automute.svg"
+    },
+    {
       "id": "com.yougram.chattools",
       "name": "ChatTools Pro (Макросы и Раскладка)",
       "author": "Custom",
