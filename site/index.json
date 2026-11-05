@@ -144,16 +144,16 @@
     {
       "id": "com.yougram.discord.sounds",
       "name": "DiscordSounds Pro",
-      "author": "Custom",
-      "version": "2.3.4",
+      "author": "ex1t44",
+      "version": "2.3.8",
       "api": "2.3",
       "description": "Прямое воспроизведение звуков Discord через OpenSL ES. Команды: .ds test, .ds on, .ds off.",
       "long_description": "Прямое воспроизведение звуков Discord через OpenSL ES. Команды: .ds test, .ds on, .ds off.",
       "category": "Звуки",
-      "url": "https://github.com/julfy-0/yougram-plugins/releases/download/submission-mw0zkohm-07bb01cd/com.yougram.discord.sounds-2.3.4.ygplugin",
-      "sha256": "06230dbe7e6f479bb50b9f69e1b37d268e453d9a031f8e0f7046a9b5e654e61d",
-      "size": 9519,
-      "changelog": "обновлена иконка",
+      "url": "https://github.com/julfy-0/yougram-plugins/releases/download/submission-mw35jbc4-62885ca2/com.yougram.discord.sounds-2.3.8.ygplugin",
+      "sha256": "715890e479273d675caad9b80d814d478831eef720df0b8bc25177b2d5fb02b6",
+      "size": 12126,
+      "changelog": "Да, да, иконка дерьма, я понимаю, но пока только вот так работает.\nЯ сделаю иконку позже\nИзвиняюсь.",
       "permissions": [
         "chat.read",
         "chat.send",
@@ -164,7 +164,7 @@
       "added": 1793695073,
       "developer": "ex1t44",
       "verified": true,
-      "icon": "icons/com.yougram.discord.sounds.svg"
+      "icon": "icons/com.yougram.discord.sounds.png"
     },
     {
       "id": "com.yougram.fakelink",
