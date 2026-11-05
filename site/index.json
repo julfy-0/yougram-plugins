@@ -145,15 +145,15 @@
       "id": "com.yougram.discord.sounds",
       "name": "DiscordSounds Pro",
       "author": "ex1t44",
-      "version": "2.3.8",
+      "version": "2.3.10",
       "api": "2.3",
       "description": "Прямое воспроизведение звуков Discord через OpenSL ES. Команды: .ds test, .ds on, .ds off.",
       "long_description": "Прямое воспроизведение звуков Discord через OpenSL ES. Команды: .ds test, .ds on, .ds off.",
       "category": "Звуки",
-      "url": "https://github.com/julfy-0/yougram-plugins/releases/download/submission-mw35jbc4-62885ca2/com.yougram.discord.sounds-2.3.8.ygplugin",
-      "sha256": "715890e479273d675caad9b80d814d478831eef720df0b8bc25177b2d5fb02b6",
-      "size": 12126,
-      "changelog": "Да, да, иконка дерьма, я понимаю, но пока только вот так работает.\nЯ сделаю иконку позже\nИзвиняюсь.",
+      "url": "https://github.com/julfy-0/yougram-plugins/releases/download/submission-mw3e6vzt-99dabf39/com.yougram.discord.sounds-2.3.10.ygplugin",
+      "sha256": "3c657760fc767da9eca5b30bb2b9ede8bc56ef9b6b52785fb8734eeb67ef0c3d",
+      "size": 12131,
+      "changelog": "Сделал наконец-то до конца\nНастройки новые, теперь команды не нужны\nИконка обновлена до конца\nПользуйтесь на сдоровье",
       "permissions": [
         "chat.read",
         "chat.send",
@@ -164,7 +164,7 @@
       "added": 1793695073,
       "developer": "ex1t44",
       "verified": true,
-      "icon": "icons/com.yougram.discord.sounds.png"
+      "icon": "icons/com.yougram.discord.sounds.svg"
     },
     {
       "id": "com.yougram.fakelink",
