@@ -188,6 +188,31 @@
       "verified": true
     },
     {
+      "id": "com.yougram.fakelink.radar",
+      "name": "FakeLink Radar Pro",
+      "author": "ex1t44",
+      "version": "2.5.0",
+      "api": "2.3",
+      "description": "Интеллектуальный радар безопасности: перехват подмены текста (Mismatch), омоглифов, скама Steam/TG/Nitro и опасных TLD.",
+      "long_description": "Абсолютно новый фейк линк, теперь добавились куда больше настроек",
+      "category": "Безопасность",
+      "url": "https://github.com/julfy-0/yougram-plugins/releases/download/submission-mw54jxcm-ac94732b/com.yougram.fakelink.radar-2.5.0.ygplugin",
+      "sha256": "e0faa1437c23bb15703b7ed4185bbcbbba511e1eba43645db263c388d80b6162",
+      "size": 8400,
+      "changelog": "",
+      "permissions": [
+        "chat.read",
+        "chat.send",
+        "chat.modify",
+        "hooks",
+        "ui"
+      ],
+      "added": 1793978626,
+      "developer": "ex1t44",
+      "verified": true,
+      "icon": "icons/com.yougram.fakelink.radar.svg"
+    },
+    {
       "id": "com.yougram.habittracker",
       "name": "Habit Tracker",
       "author": "Yougram Community",
